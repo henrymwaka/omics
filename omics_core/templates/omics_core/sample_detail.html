@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>{{ sample.sample_id }}</title></head>
+<body>
+<h1>Sample {{ sample.sample_id }}</h1>
+<p>Organism: {{ sample.organism }}</p>
+<p>Type: {{ sample.data_type }}</p>
+
+<h2>Files</h2>
+<ul>
+{% for f in sample.files.all %}
+  <li>{{ f.file.name }} ({{ f.file_type }})</li>
+{% empty %}
+  <li>No files uploaded.</li>
+{% endfor %}
+</ul>
+
+<p><a href="{% url 'project_detail' sample.project.pk %}">&larr; Back to Project</a></p>
+</body>
+</html>

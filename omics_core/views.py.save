@@ -1,0 +1,34 @@
+from django.shortcuts import render, get_object_or_404
+from .models import Project, Sample
+
+def project_list(request):
+    projects = Project.objects.all().order_by("-created_at")
+    return render(request, "omics_core/project_list.html", {"projects": projects})
+
+def project_detail(request, pk):
+    project = get_object_or_404(Project, pk=pk)
+    return render(request, "omics_core/project_detail.html", {"project": project})
+
+def sample_detail(request, pk):
+    sample = get_object_or_404(Sample, pk=pk)
+    return render(request, "omics_core/sample_detail.html", {"sample": sample})
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from .forms import SampleUploadForm
+
+def upload_sample(request):
+    """
+    Upload a new sample and link it to a project.
+    """
+    if request.method == "POST":
+        form = SampleUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Sample uploaded successfully.")
+            return redirect("project_list")
+        else:
+            messages.error(request, "Error uploading sample. Please check the form.")
+    else:
+        form = SampleUploadForm()
+
+    return render(request, "omics_core/upload.html", {"form": form})

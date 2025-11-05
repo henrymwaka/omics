@@ -1,0 +1,154 @@
+"""
+ResLab Omics Platform — Unified Django Settings
+================================================
+Production-ready settings for omics.reslab.dev
+Deployed under Nginx + Gunicorn + Cloudflare.
+"""
+
+from pathlib import Path
+
+# ---------------------------------------------------------------------
+# BASE PATHS
+# ---------------------------------------------------------------------
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# ---------------------------------------------------------------------
+# SECURITY CONFIGURATION
+# ---------------------------------------------------------------------
+SECRET_KEY = "django-insecure-aisbjh0#dngj#zn66rpl90mys+fr1!xy%8xk72ur9gggbslz=w"
+DEBUG = True
+
+ALLOWED_HOSTS = [
+    "omics.reslab.dev",
+    "www.omics.reslab.dev",
+    "127.0.0.1",
+    "localhost",
+]
+
+# ---------------------------------------------------------------------
+# APPLICATIONS
+# ---------------------------------------------------------------------
+INSTALLED_APPS = [
+    # Django core apps
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+
+    # Third-party
+    "rest_framework",
+    "drf_yasg",
+
+    # Local apps
+    "omics_core",
+    "uploads",
+    "analytics",
+    "api",
+    "users",
+]
+
+# ---------------------------------------------------------------------
+# MIDDLEWARE
+# ---------------------------------------------------------------------
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+# ---------------------------------------------------------------------
+# URLS / WSGI
+# ---------------------------------------------------------------------
+ROOT_URLCONF = "omics.urls"
+WSGI_APPLICATION = "omics.wsgi.application"
+
+# ---------------------------------------------------------------------
+# TEMPLATES
+# ---------------------------------------------------------------------
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
+# ---------------------------------------------------------------------
+# DATABASE (SQLite for dev; replace with PostgreSQL in production)
+# ---------------------------------------------------------------------
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
+}
+
+# ---------------------------------------------------------------------
+# PASSWORD VALIDATION
+# ---------------------------------------------------------------------
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+# ---------------------------------------------------------------------
+# INTERNATIONALIZATION
+# ---------------------------------------------------------------------
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "Africa/Kampala"
+USE_I18N = True
+USE_TZ = True
+
+# ---------------------------------------------------------------------
+# STATIC & MEDIA
+# ---------------------------------------------------------------------
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "static"
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+# ---------------------------------------------------------------------
+# REST FRAMEWORK CONFIGURATION
+# ---------------------------------------------------------------------
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.AllowAny",
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+    ],
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+        "rest_framework.renderers.BrowsableAPIRenderer",
+    ],
+}
+
+# ---------------------------------------------------------------------
+# SECURITY / HEADERS
+# ---------------------------------------------------------------------
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = "DENY"
+
+# ---------------------------------------------------------------------
+# DEFAULTS
+# ---------------------------------------------------------------------
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

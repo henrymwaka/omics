@@ -1,0 +1,67 @@
+# ===============================================================
+# Omics Platform Git Ignore — Django + React (Vite) + Gunicorn
+# ===============================================================
+
+# ---- Python / Django ----
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.log
+db.sqlite3
+.env
+.env.*
+.venv/
+venv/
+env/
+*.egg-info/
+*.pot
+*.mo
+*.pyproj
+*.sublime-project
+*.sublime-workspace
+
+# ---- Django static & media ----
+/static/
+/media/
+staticfiles/
+*.pdf
+*.csv
+*.xlsx
+*.json
+*.xml
+
+# ---- Frontend / React (Vite) ----
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.cache/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---- OS / Editor / IDE ----
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.bak
+*.swp
+*.tmp
+*~
+
+# ---- Build and deployment artifacts ----
+/run/
+*.sock
+*.pid
+*.pid.lock
+*.db
+*.sql
+*.crt
+*.pem
+*.key
+
+# ---- System backup directories ----
+_backup_*/
+__backup__*/
+__old__*/
