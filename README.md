@@ -128,3 +128,39 @@ pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
 
+
+---
+
+## 🧬 NCBI Taxonomy Integration
+
+The Omics Platform uses local NCBI Taxonomy data to enrich metadata during sample registration and organism selection.  
+This dataset is required for taxonomy lookups but **should never be tracked in Git** due to its large size.
+
+### Source
+- **NCBI Taxonomy Dump:** [https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/new_taxdump.zip](https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/new_taxdump.zip)
+
+### Local Setup
+1. Download the latest dump:
+   ```bash
+   cd ~/Projects/omics
+   wget https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/new_taxdump.zip -P ncbi_taxdump/
+   unzip ncbi_taxdump/new_taxdump.zip -d ncbi_taxdump/
+
+2. Import taxonomy data into the local database:
+
+python manage.py import_ncbi_taxonomy ncbi_taxdump/
+
+
+3. The system will populate tables with organism names, ranks, and lineage data for use in sample creation forms.
+
+
+
+Notes
+
+The ncbi_taxdump/ folder and new_taxdump.zip file are excluded via .gitignore to prevent large-file commits.
+
+A backup copy can be stored in /mnt/data/archives/ for local reference.
+
+Only metadata derived from these files (e.g., taxonomy tables) are persisted in the database.
+
+
