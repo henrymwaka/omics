@@ -1,42 +1,450 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
+/* Global layout */
+.layout {
+  display: flex;
+  min-height: 100vh;
+  font-family: "Inter", sans-serif;
+  color: #1e293b;
+  background-color: #f8fafc;
+}
+
+.sidebar {
+  width: 220px;
+  background-color: #0f172a;
+  color: #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+}
+
+.sidebar h2 {
+  color: #38bdf8;
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+}
+
+.sidebar nav a {
+  display: block;
+  color: #cbd5e1;
+  text-decoration: none;
+  padding: 0.5rem 0;
+  border-radius: 6px;
+}
+
+.sidebar nav a.active,
+.sidebar nav a:hover {
+  color: #fff;
+  background-color: #1d4ed8;
+}
+
+.main {
+  flex: 1;
   padding: 2rem;
-  text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* Header */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.admin-link {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+/* Cards */
+.cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
 }
 
 .card {
-  padding: 2em;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
 }
 
-.read-the-docs {
-  color: #888;
+.card.wide {
+  margin-top: 1.5rem;
+}
+
+.btn {
+  background-color: #2563eb;
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background-color: #1d4ed8;
+}
+
+.btn.small {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+input,
+textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  margin-top: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Table */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.6rem;
+  text-align: left;
+}
+
+.table th {
+  background-color: #f1f5f9;
+}
+
+.alert {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 6px;
+}
+
+.alert.error {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.alert.info {
+  background-color: #dbeafe;
+  color: #1e3a8a;
+}
+.hero {
+  height: 100vh;
+  background: linear-gradient(to bottom, #0f172a, #1e3a8a),
+    url("/public/omics-bg.jpg") center/cover no-repeat;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 2rem;
+}
+
+.hero .overlay {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 3rem;
+  border-radius: 16px;
+  max-width: 800px;
+}
+
+.hero h1 {
+  font-size: 3rem;
+  color: #38bdf8;
+}
+
+.hero-buttons {
+  margin-top: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+}
+
+/* Stats Section */
+.stats {
+  background: #f8fafc;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.stat-cards {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+.stat {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  width: 160px;
+}
+
+.stat h3 {
+  color: #1d4ed8;
+  font-size: 2rem;
+}
+
+/* Workflow Section */
+.workflow {
+  padding: 3rem 1rem;
+  background: white;
+  text-align: center;
+}
+
+.workflow .steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.step {
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+/* Footer */
+.footer {
+  background: #0f172a;
+  color: #94a3b8;
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.footer-links {
+  margin-top: 0.5rem;
+}
+
+.footer-links a {
+  color: #38bdf8;
+  margin: 0 0.5rem;
+  text-decoration: none;
+}
+/* ==========================================================
+   DASHBOARD ENHANCEMENTS
+   Modular layout for components/dashboard/
+   ========================================================== */
+
+/* Navbar Header */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #0f172a;
+  color: #fff;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid #1e293b;
+}
+
+.navbar-left h1 {
+  font-size: 1.3rem;
+  color: #38bdf8;
+}
+
+.navbar-right .nav-link {
+  margin-left: 1rem;
+  color: #cbd5e1;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.navbar-right .nav-link:hover {
+  color: #fff;
+}
+
+/* Grid layout for project & sample cards */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+/* Improved card look for dashboard sections */
+.card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  padding: 1.5rem;
+}
+
+/* Highlight active project */
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.list-item {
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.list-item:hover {
+  background: #f1f5f9;
+}
+
+.list-item.active {
+  background: #dbeafe;
+  font-weight: 600;
+}
+
+/* Muted text and alerts */
+.muted {
+  color: #64748b;
+}
+
+.small {
+  font-size: 0.85rem;
+}
+
+/* Buttons override for consistency */
+.btn {
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+}
+
+.btn.primary {
+  background: #2563eb;
+  color: white;
+}
+
+.btn.primary:hover {
+  background: #1d4ed8;
+}
+
+.btn.small {
+  font-size: 0.85rem;
+  padding: 0.3rem 0.7rem;
+}
+
+/* Table formatting improvements */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0.6rem 0.5rem;
+}
+
+.table th {
+  background: #f8fafc;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+}
+
+.table td a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.table td a:hover {
+  text-decoration: underline;
+}
+
+/* Section spacing */
+.new-sample-form {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+/* Floating toast notification */
+.toast {
+  position: fixed;
+  top: 1.2rem;
+  right: 1.2rem;
+  padding: 1rem 1.4rem;
+  border-radius: 10px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 9999;
+  transform: translateX(150%);
+  animation: slideIn 0.5s forwards, fadeOut 1s 2.5s forwards;
+}
+
+.toast-success {
+  background-color: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+@keyframes slideIn {
+  to { transform: translateX(0); }
+}
+
+@keyframes fadeOut {
+  to { opacity: 0; transform: translateX(150%); }
+}
+/* =========================================================
+   Toast Notifications
+   ========================================================= */
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 2000;
+  background: #1e293b;
+  color: #fff;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  transform: translateY(20px);
+  animation: toast-slide 0.4s ease-out forwards;
+  font-size: 0.95rem;
+  letter-spacing: 0.2px;
+}
+
+/* Toast color variants */
+.toast-success {
+  background: #16a34a;
+}
+.toast-error {
+  background: #dc2626;
+}
+.toast-info {
+  background: #2563eb;
+}
+
+/* Entry / exit animation */
+@keyframes toast-slide {
+  from {
+    opacity: 0;
+    transform: translateY(25px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade out automatically when unmounted */
+.toast.fade-out {
+  animation: toast-fadeout 0.4s ease-in forwards;
+}
+@keyframes toast-fadeout {
+  to {
+    opacity: 0;
+    transform: translateY(15px);
+  }
 }
