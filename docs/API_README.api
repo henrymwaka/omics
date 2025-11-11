@@ -1,0 +1,191 @@
+🧬 ResLab Omics Platform API
+
+Base URL:
+
+https://omics.reslab.dev/api/
+
+Framework: Django REST Framework + drf_yasg
+Auth: Currently open for internal development (add TokenAuth/JWT in production)
+
+
+---
+
+1. Overview
+
+This API provides endpoints for managing and querying omics projects, biological samples, organisms, tissue types, and uploaded data files.
+It supports structured metadata capture, controlled vocabularies, and multi-omics data integration.
+
+
+---
+
+2. Interactive Documentation
+
+Interface	URL
+
+Swagger UI	https://omics.reslab.dev/api/docs/
+ReDoc	https://omics.reslab.dev/api/redoc/
+
+
+Both auto-generate OpenAPI (v3) documentation directly from the live schema.
+
+
+---
+
+3. Endpoints Summary
+
+Resource	Endpoint	Method	Description
+
+Projects	/projects/	GET, POST	List or create omics projects
+	/projects/{id}/	GET, PUT, DELETE	Retrieve or modify a project
+Samples	/samples/	GET, POST	List, filter, or create biological samples
+	/samples/?project={id}	GET	List samples under a project
+Files	/files/	GET, POST	Manage omics data file uploads
+Sample Drafts	/sample-drafts/	GET, POST	Temporary sample entries before submission
+Tissues	/tissues/	GET	List all tissue types or filter by kingdom
+Organisms	/organisms/	GET	List cached organisms
+Organism Search	/organisms/search/?q=<term>&kingdom=<optional>	GET	Live taxonomy-aware search
+File Upload (direct)	/upload/	POST	Upload a file tied to a sample ID
+
+
+
+---
+
+4. Example Usage
+
+4.1 Create a New Project
+
+curl -X POST https://omics.reslab.dev/api/projects/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Banana Genome Profiling",
+    "description": "RNA-seq and DNA-seq data for Musa spp."
+  }'
+
+
+---
+
+4.2 Add a Sample
+
+curl -X POST https://omics.reslab.dev/api/samples/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sample_id": "Musa_leaf_RNA_001",
+    "project": 2,
+    "organism": 15,
+    "tissue_type": 8,
+    "data_type": "RNA",
+    "collected_on": "2025-11-09"
+  }'
+
+
+---
+
+4.3 Upload an Omics Data File
+
+curl -X POST https://omics.reslab.dev/api/files/ \
+  -F "sample=10" \
+  -F "file_type=FASTQ" \
+  -F "file=@/path/to/Musa_RNA_001.fastq.gz"
+
+
+---
+
+4.4 Search for an Organism (Live)
+
+curl "https://omics.reslab.dev/api/organisms/search/?q=musa"
+
+Example output:
+
+[
+  {
+    "id": 15,
+    "scientific_name": "Musa acuminata",
+    "common_name": "Banana",
+    "kingdom": "Plant",
+    "taxonomy_id": 4641
+  }
+]
+
+
+---
+
+5. Controlled Vocabularies
+
+5.1 Tissues
+
+Each tissue entry is tied to a specific kingdom for biological consistency.
+
+Field	Description
+
+name	Tissue or organ type (e.g., Leaf, Root, Muscle)
+kingdom	Biological kingdom (Plant, Animal, etc.)
+ontology_id	Reference ontology term (e.g., PO:0009046)
+
+
+Example:
+
+curl "https://omics.reslab.dev/api/tissues/?kingdom=Plant"
+
+
+---
+
+6. Error Codes
+
+Code	Meaning	Example
+
+400	Bad Request	Missing required field
+404	Not Found	Invalid ID or resource not found
+500	Internal Server Error	Misconfiguration or backend error
+
+
+
+---
+
+7. Developer Notes
+
+Schema generation: via drf_yasg (Swagger / ReDoc)
+
+Uploads: stored under /media/uploads/YYYY/MM/DD/
+
+Database: SQLite (development) → PostgreSQL (production-ready)
+
+Models:
+
+Organism (taxonomy reference)
+
+TissueType (controlled vocabulary)
+
+Sample (biological entity)
+
+OmicsFile (associated data files)
+
+SampleDraft (temporary entries)
+
+
+
+
+---
+
+8. Roadmap
+
+Feature	Status	Notes
+
+Multi-step sample wizard (React)	✅ Implemented	
+Intelligent tissue-organism filtering	✅ Backend + frontend integrated	
+Sample draft autosave	✅ Implemented	
+User authentication	🔜 Planned (JWT)	
+Multi-file upload batch support	🔜 Planned	
+Direct NCBI taxonomy sync	🔜 Planned	
+Dashboard integration (React)	✅ Deployed	
+
+
+
+---
+
+9. Contact
+
+Maintained by:
+ResLab Omics Infrastructure Team
+📧 support@reslab.dev
+🌐 https://reslab.dev
+
