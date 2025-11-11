@@ -164,3 +164,36 @@ A backup copy can be stored in /mnt/data/archives/ for local reference.
 Only metadata derived from these files (e.g., taxonomy tables) are persisted in the database.
 
 
+
+---
+
+## 🗄️ Data Management Policy
+
+The Omics Platform follows a structured data management approach to balance performance, reproducibility, and repository integrity.
+
+### 1. File Storage Policy
+| Category | Storage Location | Git Tracking | Backup Policy |
+|-----------|------------------|---------------|----------------|
+| **System Code, Scripts, and Configs** | `/home/shaykins/Projects/omics` | ✅ Yes | GitHub repository |
+| **User Uploads, FASTQ/FASTA Data** | `/mnt/data/omics/media/uploads/` | ❌ No | Mirrored daily to `/mnt/data/backups/` |
+| **Analysis Outputs (FASTQC, BLAST, etc.)** | `/mnt/data/omics/media/analysis/` | ❌ No | Auto-clean every 30 days (archived selectively) |
+| **Reference Databases (NCBI, Pfam, UniProt, etc.)** | `/mnt/data/archives/` | ❌ No | Updated periodically via scripts |
+| **Temporary Processing Files** | `/mnt/data/omics/media/tmp/` | ❌ No | Automatically purged after each job |
+
+All large or generated files are excluded via `.gitignore`. Only configuration, scripts, and metadata schemas are version-controlled.
+
+### 2. Git Repository Policy
+- Repositories must **never include files exceeding 50 MB**.  
+- Use Git LFS only for small, persistent binaries (e.g., icons, static assets).  
+- Each commit must reflect reproducible code or metadata—not datasets.
+
+### 3. Backup and Recovery
+- Daily local backups are stored under `/mnt/data/backups/`.  
+- Weekly off-site backups are synchronized with the ResLab secure archive.  
+- Backup files follow the convention: `projectname_backup_YYYYMMDD_HHMM`.
+
+### 4. Data Reproducibility
+- Every analysis step (e.g., FASTQC, BLAST, DESeq2) creates a reproducible `metadata.json` record.  
+- These records capture parameters, input hashes, and timestamps for traceability.  
+- Results can be regenerated from metadata using the workflow runner.
+
