@@ -65,3 +65,26 @@ Thumbs.db
 _backup_*/
 __backup__*/
 __old__*/
+# NCBI Taxonomy dump files
+new_taxdump.zip
+ncbi_taxdump/
+
+# --- ResLab Omics data exclusions ---
+# Large or generated datasets
+*.zip
+*.tar.gz
+*.bz2
+*.7z
+*.gz
+*.fasta
+*.fastq
+/media/
+/mnt/
+/ncbi_taxdump/
+/new_taxdump.zip
+*.sqlite3
+*.db
+*.bak
+*.log
+*.tmp
+*.cache
