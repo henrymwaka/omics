@@ -1,0 +1,236 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-17 20:00:02
+Current: omics_snapshot_2025-11-17_20-00.txt
+Previous: omics_snapshot_2025-11-17_16-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-17_16-00.txt	2025-11-17 16:00:02.121536807 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-17_20-00.txt	2025-11-17 20:00:02.530772179 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-17 16:00:01
++Generated on: 2025-11-17 20:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -298,6 +298,7 @@
+ │   ├── omics_changes_2025-11-17_04-00.txt
+ │   ├── omics_changes_2025-11-17_08-00.txt
+ │   ├── omics_changes_2025-11-17_12-00.txt
++│   ├── omics_changes_2025-11-17_16-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -358,7 +359,9 @@
+ │   ├── omics_snapshot_2025-11-17_08-00.zip
+ │   ├── omics_snapshot_2025-11-17_12-00.txt
+ │   ├── omics_snapshot_2025-11-17_12-00.zip
+-│   └── omics_snapshot_2025-11-17_16-00.txt
++│   ├── omics_snapshot_2025-11-17_16-00.txt
++│   ├── omics_snapshot_2025-11-17_16-00.zip
++│   └── omics_snapshot_2025-11-17_20-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -435,7 +438,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-181 directories, 245 files
++181 directories, 248 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -962,8 +965,12 @@
+     OmicsResult,
+ )
+ 
+-# ---------------------- Organism Serializer ---------------------
++# ===============================================================
++# Organism Serializer
++# ===============================================================
++
+ class OrganismSerializer(serializers.ModelSerializer):
++    """Public-facing organism search serializer."""
+     db_id = serializers.IntegerField(source="id", read_only=True)
+ 
+     class Meta:
+@@ -971,18 +978,24 @@
+         fields = ["db_id", "scientific_name", "common_name", "kingdom", "taxonomy_id"]
+ 
+ 
+-# ---------------------- Tissue Type Serializer ------------------
++# ===============================================================
++# Tissue Type Serializer
++# ===============================================================
++
+ class TissueTypeSerializer(serializers.ModelSerializer):
+-    """Controlled vocabulary for tissue types, linked to kingdom."""
++    """Vocabulary for tissue types filtered by kingdom."""
+ 
+     class Meta:
+         model = TissueType
+         fields = ["id", "name", "kingdom", "ontology_id"]
+ 
+ 
+-# ---------------------- Omics File Serializer -------------------
++# ===============================================================
++# Omics File Serializer
++# ===============================================================
++
+ class OmicsFileSerializer(serializers.ModelSerializer):
+-    """Serializer for uploaded omics data files."""
++    """Uploaded omics data files linked to samples."""
+ 
+     class Meta:
+         model = OmicsFile
+@@ -997,33 +1010,46 @@
+         ]
+ 
+ 
+-# ---------------------- Sample Serializer -----------------------
++# ===============================================================
++# Sample Serializer  (FIXED VERSION)
++# ===============================================================
++
+ class SampleSerializer(serializers.ModelSerializer):
+     """
+-    Serializer for biological samples, linked to controlled vocabularies.
+-
+-    - Includes organism, tissue_type, and nested OmicsFile data.
+-    - `files` is linked via the related_name in the model.
++    Serializer for biological samples.
++    Includes nested file records and readable organism / tissue names.
+     """
+ 
+     project = serializers.PrimaryKeyRelatedField(queryset=Project.objects.all())
+     files = OmicsFileSerializer(many=True, read_only=True)
+ 
++    # FIX: ensure DRF treats organism as an integer PK, not a dict
+     organism = serializers.PrimaryKeyRelatedField(
+-        queryset=Organism.objects.all(), allow_null=True, required=False
++        queryset=Organism.objects.all(),
++        allow_null=True,
++        required=False,
++        pk_field=serializers.IntegerField()
+     )
++
+     tissue_type = serializers.PrimaryKeyRelatedField(
+-        queryset=TissueType.objects.all(), allow_null=True, required=False
++        queryset=TissueType.objects.all(),
++        allow_null=True,
++        required=False,
++        pk_field=serializers.IntegerField()
+     )
+ 
+     organism_name = serializers.SerializerMethodField()
+     tissue_type_name = serializers.SerializerMethodField()
+ 
+     def get_organism_name(self, obj):
+-        return obj.organism.scientific_name if obj.organism else None
++        if obj.organism:
++            return obj.organism.scientific_name
++        return None
+ 
+     def get_tissue_type_name(self, obj):
+-        return obj.tissue_type.name if obj.tissue_type else None
++        if obj.tissue_type:
++            return obj.tissue_type.name
++        return None
+ 
+     class Meta:
+         model = Sample
+@@ -1042,19 +1068,27 @@
+         ]
+ 
+ 
+-# ---------------------- SampleDraft Serializer ------------------
++# ===============================================================
++# Sample Draft Serializer
++# ===============================================================
++
+ class SampleDraftSerializer(serializers.ModelSerializer):
+-    """
+-    Draft samples created by the wizard before final commit.
+-    Mirrors SampleSerializer but without attached files.
+-    """
++    """Temporary sample drafts stored before finalization."""
+ 
+     project = serializers.PrimaryKeyRelatedField(queryset=Project.objects.all())
++
+     organism = serializers.PrimaryKeyRelatedField(
+-        queryset=Organism.objects.all(), allow_null=True, required=False
++        queryset=Organism.objects.all(),
++        allow_null=True,
++        required=False,
++        pk_field=serializers.IntegerField()
+     )
++
+     tissue_type = serializers.PrimaryKeyRelatedField(
+-        queryset=TissueType.objects.all(), allow_null=True, required=False
++        queryset=TissueType.objects.all(),
++        allow_null=True,
++        required=False,
++        pk_field=serializers.IntegerField()
+     )
+ 
+     organism_name = serializers.SerializerMethodField()
+@@ -1079,10 +1113,12 @@
+         ]
+ 
+ 
+-# ---------------------- Project Serializer ----------------------
+-class ProjectSerializer(serializers.ModelSerializer):
+-    """Serializer for omics projects, optionally including nested samples."""
++# ===============================================================
++# Project Serializer
++# ===============================================================
+ 
++class ProjectSerializer(serializers.ModelSerializer):
++    """Project serializer including nested sample information."""
+     samples = SampleSerializer(many=True, read_only=True)
+ 
+     class Meta:
+@@ -1090,10 +1126,12 @@
+         fields = ["id", "name", "description", "created_at", "samples"]
+ 
+ 
+-# ---------------------- Omics Job Serializer --------------------
+-class OmicsJobSerializer(serializers.ModelSerializer):
+-    """Serializer for bioinformatics jobs (FastQC, alignment, etc.)."""
++# ===============================================================
++# Omics Job Serializer
++# ===============================================================
+ 
++class OmicsJobSerializer(serializers.ModelSerializer):
++    """Celery-driven job serializer (FastQC, alignment, etc.)."""
+     sample_id = serializers.ReadOnlyField(source="sample.sample_id")
+ 
+     class Meta:
+@@ -1111,25 +1149,6 @@
+         ]
+ 
+ 
+-# ---------------------- Omics Result Serializer -----------------
+-class OmicsResultSerializer(serializers.ModelSerializer):
+-    """Serializer for processed results (output files and summaries)."""
+-
+-    sample_id = serializers.ReadOnlyField(source="sample.sample_id")
+-
+-    class Meta:
+-        model = OmicsResult
+-        fields = [
+-            "id",
+-            "sample",
+-            "sample_id",
+-            "result_type",
+-            "file",
+-            "summary_json",
+-            "created_at",
+-        ]
+-
+-
+ 
+ ### FILE: omics_core/views.py
+ -----------------------------------

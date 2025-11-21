@@ -1,0 +1,61 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-15 16:00:03
+Current: omics_snapshot_2025-11-15_16-00.txt
+Previous: omics_snapshot_2025-11-15_12-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-15_12-00.txt	2025-11-15 12:00:02.115210712 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-15_16-00.txt	2025-11-15 16:00:02.779706715 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-15 12:00:01
++Generated on: 2025-11-15 16:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -244,6 +244,7 @@
+ │   ├── __pycache__
+ │   │   ├── admin.cpython-310.pyc
+ │   │   ├── apps.cpython-310.pyc
++│   │   ├── auth.cpython-310.pyc
+ │   │   ├── forms.cpython-310.pyc
+ │   │   ├── __init__.cpython-310.pyc
+ │   │   ├── models.cpython-310.pyc
+@@ -276,6 +277,7 @@
+ │   ├── omics_changes_2025-11-15_00-00.txt
+ │   ├── omics_changes_2025-11-15_04-00.txt
+ │   ├── omics_changes_2025-11-15_08-00.txt
++│   ├── omics_changes_2025-11-15_12-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -310,7 +312,9 @@
+ │   ├── omics_snapshot_2025-11-15_04-00.zip
+ │   ├── omics_snapshot_2025-11-15_08-00.txt
+ │   ├── omics_snapshot_2025-11-15_08-00.zip
+-│   └── omics_snapshot_2025-11-15_12-00.txt
++│   ├── omics_snapshot_2025-11-15_12-00.txt
++│   ├── omics_snapshot_2025-11-15_12-00.zip
++│   └── omics_snapshot_2025-11-15_16-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -389,7 +393,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-179 directories, 201 files
++179 directories, 205 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -570,7 +574,7 @@
+         "rest_framework.permissions.AllowAny",
+     ],
+     "DEFAULT_AUTHENTICATION_CLASSES": [
+-        "rest_framework.authentication.SessionAuthentication",
++        "omics_core.auth.CsrfExemptSessionAuthentication",
+         "rest_framework.authentication.BasicAuthentication",
+     ],
+     "DEFAULT_RENDERER_CLASSES": [

@@ -1,39 +1,80 @@
-// frontend/src/components/ProjectList.jsx
+// frontend/src/components/SampleSection.jsx
+import { useState, useEffect } from "react";
 import "../App.css";
+import SampleWizard from "./SampleWizard";
+import SampleSummary from "./SampleSummary";
 
-function ProjectList({
-  projects,
-  selectedProjectId,
-  onSelectProject,
-  onRefresh,
-}) {
+function SampleSection({ project, onRefreshProject }) {
+  const [showWizard, setShowWizard] = useState(false);
+
+  // Auto-refresh sample list when the project changes
+  useEffect(() => {
+    if (project && onRefreshProject) {
+      onRefreshProject();
+    }
+  }, [project]);
+
+  const handleWizardComplete = () => {
+    setShowWizard(false);
+    if (onRefreshProject) {
+      onRefreshProject();   // reload project samples
+    }
+  };
+
+  if (!project) {
+    return (
+      <div className="card">
+        <p>Select a project to view its samples.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="card">
       <div className="card-header-row">
-        <h2>Projects</h2>
-        <button type="button" onClick={onRefresh} className="btn">
-          Refresh
+        <h2>Samples in {project.name}</h2>
+        <button className="btn primary" onClick={() => setShowWizard(true)}>
+          + Add Sample
         </button>
       </div>
-      <ul className="list">
-        {projects.map((p) => (
-          <li
-            key={p.id}
-            className={
-              selectedProjectId === p.id ? "list-item active" : "list-item"
-            }
-            onClick={() => onSelectProject(p)}
+
+      {!showWizard && (
+        <>
+          {project.samples && project.samples.length > 0 ? (
+            <ul className="list">
+              {project.samples.map((s) => (
+                <li key={s.id} className="list-item">
+                  <strong>{s.sample_id}</strong>
+                  {" — "}
+                  <span className="muted">
+                    {s.organism_name || "No organism"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">No samples yet.</p>
+          )}
+        </>
+      )}
+
+      {showWizard && (
+        <div className="wizard-container">
+          <SampleWizard
+            projectId={project.id}
+            onComplete={handleWizardComplete}
+          />
+
+          <button
+            className="btn secondary mt-3"
+            onClick={() => setShowWizard(false)}
           >
-            <strong>{p.name}</strong>
-            {p.description && <span className="muted"> - {p.description}</span>}
-          </li>
-        ))}
-        {projects.length === 0 && (
-          <li className="muted">No projects yet.</li>
-        )}
-      </ul>
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-export default ProjectList;
+export default SampleSection;

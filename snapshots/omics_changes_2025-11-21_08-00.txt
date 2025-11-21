@@ -1,0 +1,193 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-21 08:00:02
+Current: omics_snapshot_2025-11-21_08-00.txt
+Previous: omics_snapshot_2025-11-21_04-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-21_04-00.txt	2025-11-21 04:00:02.015747408 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-21_08-00.txt	2025-11-21 08:00:02.628933515 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-21 04:00:01
++Generated on: 2025-11-21 08:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -320,6 +320,7 @@
+ │   ├── omics_changes_2025-11-20_12-00.txt
+ │   ├── omics_changes_2025-11-20_20-00.txt
+ │   ├── omics_changes_2025-11-21_00-00.txt
++│   ├── omics_changes_2025-11-21_04-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -420,7 +421,9 @@
+ │   ├── omics_snapshot_2025-11-20_20-00.zip
+ │   ├── omics_snapshot_2025-11-21_00-00.txt
+ │   ├── omics_snapshot_2025-11-21_00-00.zip
+-│   └── omics_snapshot_2025-11-21_04-00.txt
++│   ├── omics_snapshot_2025-11-21_04-00.txt
++│   ├── omics_snapshot_2025-11-21_04-00.zip
++│   └── omics_snapshot_2025-11-21_08-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -497,7 +500,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-181 directories, 307 files
++181 directories, 310 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -1248,15 +1251,10 @@
+ 
+ # ===============================================================
+ # PROJECT API
+-# All operations require an authenticated user
+ # ===============================================================
+ class ProjectViewSet(viewsets.ModelViewSet):
+     """
+     Full CRUD for projects.
+-
+-    Security:
+-      permission_classes = [IsAuthenticated]
+-      All methods require a logged in user.
+     """
+ 
+     queryset = Project.objects.all().order_by("-created_at")
+@@ -1266,20 +1264,12 @@
+ 
+ # ===============================================================
+ # ORGANISM API
+-# Public read only, with search and kingdom filters
+-# Matches frontend calls:
+-#   GET /api/organisms/?search=<query>&kingdom=<kingdom>
+ # ===============================================================
+ class OrganismViewSet(viewsets.ReadOnlyModelViewSet):
+     """
+     Read only lookup for organisms.
+ 
+-    Open to unauthenticated users so that the wizard can search
+-    organisms before login issues are sorted out.
+-
+-    Query parameters:
+-      search  : text fragment for scientific_name or common_name
+-      kingdom : optional kingdom filter (Plant, Animal, etc)
++    Open so the wizard can search organisms.
+     """
+ 
+     serializer_class = OrganismSerializer
+@@ -1305,18 +1295,10 @@
+ 
+ # ===============================================================
+ # TISSUE TYPE API
+-# Public read only, optional kingdom filter
+-# Matches frontend calls:
+-#   GET /api/tissues/?kingdom=<kingdom>
+ # ===============================================================
+ class TissueTypeViewSet(viewsets.ReadOnlyModelViewSet):
+     """
+     Read only lookup for tissue types.
+-
+-    Open to unauthenticated users.
+-
+-    Query parameters:
+-      kingdom : if the model has a kingdom field, filter by it.
+     """
+ 
+     serializer_class = TissueTypeSerializer
+@@ -1334,20 +1316,15 @@
+ 
+ # ===============================================================
+ # SAMPLE API
+-# Full CRUD, currently open to allow wizard saves without auth
+-# Adds optional project filter:
+-#   GET /api/samples/?project=<project_id>
+ # ===============================================================
+ class SampleViewSet(viewsets.ModelViewSet):
+     """
+     Full CRUD for samples.
+ 
+-    Security:
+-      Temporarily open (AllowAny) so the frontend wizard can save
+-      while authentication wiring is being completed.
++    Temporarily open so the wizard can save while auth evolves.
+ 
+     Filters:
+-      project : restrict list by project primary key.
++      - project : restrict list by project primary key.
+     """
+ 
+     serializer_class = SampleSerializer
+@@ -1370,8 +1347,6 @@
+ 
+     # -----------------------------------------------------------
+     # Latest FastQC result for a sample
+-    # Used by dashboard QC panel
+-    # GET /api/samples/<id>/fastqc/
+     # -----------------------------------------------------------
+     @action(detail=True, methods=["get"], url_path="fastqc")
+     def latest_fastqc(self, request, pk=None):
+@@ -1381,14 +1356,14 @@
+             OmicsResult.objects.filter(
+                 sample=sample, result_type="FASTQC_HTML"
+             )
+-            .order_by("-created_at", "-id")
++            .order_by("-created_at")
+             .first()
+         )
+         zipf = (
+             OmicsResult.objects.filter(
+                 sample=sample, result_type="FASTQC_ZIP"
+             )
+-            .order_by("-created_at", "-id")
++            .order_by("-created_at")
+             .first()
+         )
+ 
+@@ -1401,13 +1376,41 @@
+         elif zipf and zipf.created_at:
+             generated_on = zipf.created_at
+ 
+-        # Try to locate the latest FASTQC job for this sample
++        # Try to attach job info and summary from metadata
+         job = (
+             OmicsJob.objects.filter(sample=sample, job_type="FASTQC")
+             .order_by("-started_at", "-id")
+             .first()
+         )
+ 
++        overall_status = None
++        job_status = None
++        job_id = None
++        summary_rows = []
++
++        if job:
++            job_id = job.id
++            job_status = job.status
++            meta = job.metadata or {}
++            fastqc_meta = meta.get("fastqc") or {}
++            overall_status = fastqc_meta.get("overall_status")
++
++            summary_dict = fastqc_meta.get("summary") or {}
++            # Convert dict to list of rows for the frontend
++            for module_name, status in summary_dict.items():
++                summary_rows.append(
++                    {
++                        "module": module_name,
++                        "status": status,
++                        "description": "",
++                    }
++                )
++
++        payload = {
++            "sample_id": sample.id,
++            "sample_name": sample.sample_id,
++            "html_report": (
++
+ 
+ ### FILE: omics_core/urls.py
+ -----------------------------------

@@ -1,0 +1,461 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-16 20:00:02
+Current: omics_snapshot_2025-11-16_20-00.txt
+Previous: omics_snapshot_2025-11-16_16-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-16_16-00.txt	2025-11-16 16:00:01.655623220 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-16_20-00.txt	2025-11-16 20:00:02.050693340 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-16 16:00:01
++Generated on: 2025-11-16 20:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -197,7 +197,8 @@
+ │   │   ├── context
+ │   │   ├── index.css
+ │   │   ├── main.jsx
+-│   │   └── pages
++│   │   ├── pages
++│   │   └── styles
+ │   └── vite.config.js
+ ├── generate_project_snapshot_full.sh
+ ├── generate_project_snapshot_git.sh
+@@ -286,6 +287,7 @@
+ │   ├── omics_changes_2025-11-16_04-00.txt
+ │   ├── omics_changes_2025-11-16_08-00.txt
+ │   ├── omics_changes_2025-11-16_12-00.txt
++│   ├── omics_changes_2025-11-16_16-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -334,7 +336,9 @@
+ │   ├── omics_snapshot_2025-11-16_08-00.zip
+ │   ├── omics_snapshot_2025-11-16_12-00.txt
+ │   ├── omics_snapshot_2025-11-16_12-00.zip
+-│   └── omics_snapshot_2025-11-16_16-00.txt
++│   ├── omics_snapshot_2025-11-16_16-00.txt
++│   ├── omics_snapshot_2025-11-16_16-00.zip
++│   └── omics_snapshot_2025-11-16_20-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -369,6 +373,7 @@
+ ├── users
+ │   ├── admin.py
+ │   ├── apps.py
++│   ├── auth.py
+ │   ├── __init__.py
+ │   ├── migrations
+ │   │   ├── __init__.py
+@@ -380,6 +385,7 @@
+ │   │   ├── __init__.cpython-310.pyc
+ │   │   └── models.cpython-310.pyc
+ │   ├── tests.py
++│   ├── urls.py
+ │   └── views.py
+ └── venv
+     ├── bin
+@@ -406,7 +412,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-178 directories, 219 files
++179 directories, 224 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -447,12 +453,12 @@
+ -----------------------------------
+ """
+ ResLab Omics Platform — Unified Django Settings
+-================================================
+ Production-ready settings for omics.reslab.dev
+ Deployed under Nginx + Gunicorn + Cloudflare.
+ """
+ 
+ from pathlib import Path
++from datetime import timedelta
+ 
+ # ---------------------------------------------------------------------
+ # BASE PATHS
+@@ -485,11 +491,14 @@
+     "django.contrib.sessions",
+     "django.contrib.messages",
+     "django.contrib.staticfiles",
++
++    # Scheduling and dev tools
+     "django_celery_beat",
+     "django_extensions",
+ 
+     # Third-party
+     "rest_framework",
++    "rest_framework_simplejwt",
+     "drf_yasg",
+ 
+     # Local apps
+@@ -575,7 +584,7 @@
+ STATIC_ROOT = "/mnt/data/omics/static"
+ 
+ STATICFILES_DIRS = [
+-    BASE_DIR / "frontend/dist",
++    BASE_DIR / "frontend" / "dist",
+ ]
+ 
+ MEDIA_URL = "/media/"
+@@ -586,10 +595,11 @@
+ # ---------------------------------------------------------------------
+ REST_FRAMEWORK = {
+     "DEFAULT_PERMISSION_CLASSES": [
+-        "rest_framework.permissions.AllowAny",
++        "rest_framework.permissions.IsAuthenticatedOrReadOnly",
+     ],
+     "DEFAULT_AUTHENTICATION_CLASSES": [
+-        "omics_core.auth.CsrfExemptSessionAuthentication",
++        "users.auth.CookieJWTAuthentication",
++        "rest_framework.authentication.SessionAuthentication",
+         "rest_framework.authentication.BasicAuthentication",
+     ],
+     "DEFAULT_RENDERER_CLASSES": [
+@@ -599,6 +609,25 @@
+ }
+ 
+ # ---------------------------------------------------------------------
++# SIMPLE JWT + COOKIE SETTINGS
++# ---------------------------------------------------------------------
++SIMPLE_JWT = {
++    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
++    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
++    "ROTATE_REFRESH_TOKENS": False,
++    "BLACKLIST_AFTER_ROTATION": False,
++    "AUTH_HEADER_TYPES": ("Bearer",),
++    "ALGORITHM": "HS256",
++}
++
++# Cookies that hold the JWT tokens
++AUTH_COOKIE = "access_token"          # name of access token cookie
++AUTH_COOKIE_REFRESH = "refresh_token" # name of refresh token cookie
++AUTH_COOKIE_SECURE = True            # set to True in production over HTTPS
++AUTH_COOKIE_HTTP_ONLY = True
++AUTH_COOKIE_SAMESITE = "Lax"
++
++# ---------------------------------------------------------------------
+ # SECURITY / HEADERS
+ # ---------------------------------------------------------------------
+ SECURE_CONTENT_TYPE_NOSNIFF = True
+@@ -622,29 +651,6 @@
+ 
+ # ---------------------------------------------------------------------
+ # Celery Configuration
+-# ---------------------------------------------------------------------
+-CELERY_BROKER_URL = "redis://localhost:6379/0"
+-CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+-CELERY_ACCEPT_CONTENT = ["json"]
+-CELERY_TASK_SERIALIZER = "json"
+-CELERY_RESULT_SERIALIZER = "json"
+-CELERY_TIMEZONE = "Africa/Kampala"
+-CELERY_TASK_TRACK_STARTED = True
+-CELERY_TASK_ACKS_LATE = True
+-# ---------------------------------------------------------------------
+-# LOGGING CONFIGURATION
+-# ---------------------------------------------------------------------
+-LOGGING = {
+-    "version": 1,
+-    "disable_existing_loggers": False,
+-    "formatters": {
+-        "verbose": {
+-            "format": "[{asctime}] {levelname} {name}: {message}",
+-            "style": "{",
+-        },
+-        "simple": {
+-            "format": "{levelname}: {message}",
+-            "style": "{",
+ 
+ 
+ ### FILE: omics/urls.py
+@@ -660,32 +666,49 @@
+ from django.conf import settings
+ from django.conf.urls.static import static
+ 
++# JWT views are imported but now used via users.views wrappers
++from rest_framework_simplejwt.views import (
++    TokenObtainPairView,
++    TokenRefreshView,
++)
++
+ # ===============================================================
+-# API & Documentation
++# API ROUTES
+ # ===============================================================
+ 
+ urlpatterns = [
+-    # Admin
++    # Admin interface
+     path("admin/", admin.site.urls),
+ 
+-    # Core API (omics_core)
++    # Core API
+     path("api/", include("omics_core.urls")),
+ 
+-    # Extra/legacy API
++    # Extra or legacy API
+     path("api/extra/", include("api.urls")),
++
++    # Auth API (cookie based JWT)
++    path("api/auth/", include("users.urls")),
++
++    # Optional raw JWT endpoints if you ever need them directly
++    path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
++    path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+ ]
+ 
+ # ===============================================================
+-# SPA FRONTEND
+-# Catch-all route: React handles all non-API paths
++# SPA FRONTEND (React)
++# Catch-all for everything not starting with /api/
+ # ===============================================================
+ 
+ urlpatterns += [
+-    re_path(r"^(?!api/)(?:.*)/?$", TemplateView.as_view(template_name="index.html")),
++    re_path(
++        r"^(?!api/)(?:.*)/?$",
++        TemplateView.as_view(template_name="index.html"),
++        name="spa-entry",
++    ),
+ ]
+ 
+ # ===============================================================
+-# Static & Media files (for DEBUG mode)
++# STATIC & MEDIA (DEBUG MODE ONLY)
+ # ===============================================================
+ 
+ if settings.DEBUG:
+@@ -1577,16 +1600,17 @@
+ -----------------------------------
+ // src/pages/Dashboard.jsx
+ // -----------------------------------------------------------------------------
+-// Dashboard Page
++// ResLab Omics Dashboard
+ // -----------------------------------------------------------------------------
+-// This page provides the main interface for:
+-// - Viewing existing projects
+-// - Selecting a project to load its samples
+-// - Uploading sequencing files to samples
+-// - Creating new projects
++// Responsibilities:
++// - Load and list projects
++// - Filter and display samples by selected project
++// - Show per-project files using nested `files` from the API
++// - Allow creating new projects
++// - Allow uploading FASTQ files per sample
+ //
+-// The layout and global navigation come from GlobalLayout.
+-// This component ONLY handles dashboard logic and content.
++// Uses design tokens and layout classes defined in App.css.
++// Authentication is handled globally (Cookie-based JWT + ProtectedRoute).
+ // -----------------------------------------------------------------------------
+ 
+ import { useEffect, useMemo, useState } from "react";
+@@ -1600,8 +1624,8 @@
+   // ---------------------------------------------------------------------------
+   const [projects, setProjects] = useState([]);
+   const [selectedProject, setSelectedProject] = useState(null);
++
+   const [samples, setSamples] = useState([]);
+-  const [files, setFiles] = useState({});
+   const [loading, setLoading] = useState(false);
+   const [error, setError] = useState("");
+   const [uploadingSampleId, setUploadingSampleId] = useState(null);
+@@ -1619,7 +1643,6 @@
+     try {
+       const res = await fetch(`${API_BASE}/projects/`);
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+-
+       const data = await res.json();
+       setProjects(data);
+     } catch {
+@@ -1630,7 +1653,8 @@
+   };
+ 
+   // ---------------------------------------------------------------------------
+-  // Load samples + their files for a selected project
++  // Load samples from API, then filter by project on the client
++  // (current backend ignores ?project= query parameter).
+   // ---------------------------------------------------------------------------
+   const fetchSamples = async (projectId) => {
+     if (!projectId) return;
+@@ -1643,15 +1667,10 @@
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+ 
+       const data = await res.json();
+-      setSamples(data);
+ 
+-      // Load files for each sample
+-      const map = {};
+-      for (const s of data) {
+-        const resF = await fetch(`${API_BASE}/files/?sample=${s.id}`);
+-        if (resF.ok) map[s.id] = await resF.json();
+-      }
+-      setFiles(map);
++      // Defensive filter: only keep samples whose `project` matches
++      const filtered = data.filter((s) => s.project === projectId);
++      setSamples(filtered);
+     } catch {
+       setError("Failed to load samples for this project.");
+     } finally {
+@@ -1659,35 +1678,34 @@
+     }
+   };
+ 
+-  // Load projects on first render
++  // Initial project list
+   useEffect(() => {
+     fetchProjects();
+   }, []);
+ 
+   // ---------------------------------------------------------------------------
+-  // Summary Statistics
++  // Summary statistics
+   // ---------------------------------------------------------------------------
+   const stats = useMemo(() => {
+-    return {
+-      totalProjects: projects.length,
+-      totalSamples: samples.length,
+-      totalFiles: Object.values(files).reduce(
+-        (sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0),
+-        0
+-      ),
+-    };
+-  }, [projects, samples, files]);
++    const totalProjects = projects.length;
++    const totalSamples = samples.length;
++    const totalFiles = samples.reduce(
++      (sum, s) => sum + (Array.isArray(s.files) ? s.files.length : 0),
++      0
++    );
++
++    return { totalProjects, totalSamples, totalFiles };
++  }, [projects, samples]);
+ 
+   // ---------------------------------------------------------------------------
+   // Handlers
+   // ---------------------------------------------------------------------------
+ 
+   // Select a project and load its samples
+-  const handleSelectProject = (p) => {
+-    setSelectedProject(p);
++  const handleSelectProject = (project) => {
++    setSelectedProject(project);
+     setSamples([]);
+-    setFiles({});
+-    fetchSamples(p.id);
++    fetchSamples(project.id);
+   };
+ 
+   // Create a new project
+@@ -1713,19 +1731,18 @@
+ 
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+ 
+-      // Reset form and refresh projects list
+       setNewProjectName("");
+       setNewProjectDescription("");
+-      fetchProjects();
++      await fetchProjects();
+     } catch {
+       setError("Failed to create project.");
+     }
+   };
+ 
+-  // Upload a file for a given sample
++  // Upload a file for a given sample, then refresh the sample list
+   const handleUploadFile = async (e, sampleId, fileType) => {
+     const file = e.target.files[0];
+-    if (!file) return;
++    if (!file || !selectedProject) return;
+ 
+     setUploadingSampleId(sampleId);
+     setError("");
+@@ -1743,16 +1760,14 @@
+ 
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+ 
+-      // Reload files for that sample
+-      const resF = await fetch(`${API_BASE}/files/?sample=${sampleId}`);
+-      if (resF.ok) {
+-        const updated = await resF.json();
+-        setFiles((prev) => ({ ...prev, [sampleId]: updated }));
+-      }
++      // Reload samples for the active project so nested `files` stay in sync
++      await fetchSamples(selectedProject.id);
+     } catch {
+       setError("Failed to upload file.");
+     } finally {
+       setUploadingSampleId(null);
++      // reset input so the same file can be chosen again if needed
++      e.target.value = "";
+     }
+   };
+ 
+@@ -1761,20 +1776,28 @@
+   // ---------------------------------------------------------------------------
+   return (
+     <div className="dash-root">
+-
+-      {/* Error + loading notifications */}
++      {/* Notifications */}
+       {error && <div className="alert error">{error}</div>}
+       {loading && <div className="alert info">Loading…</div>}
+ 
+-      {/* ---------------------------------------------------------------------
+-           Summary strip: quick glance at projects, samples, files
+-         --------------------------------------------------------------------- */}
++      {/* Summary strip */}
+       <section className="dash-summary-strip">
+         <div className="dash-summary-card">
+           <span className="dash-summary-label">Projects</span>
+           <span className="dash-summary-value">{stats.totalProjects}</span>
+         </div>
+         <div className="dash-summary-card">
++          <span className="dash-summary-label">Samples in view</span>
++          <span className="dash-summary-value">{stats.totalSamples}</span>
++        </div>
++        <div className="dash-summary-card">
++          <span className="dash-summary-label">Files in view</span>
++          <span className="dash-summary-value">{stats.totalFiles}</span>
++        </div>
++      </section>
++
++      {/* Two-column layout */}
++      <section className="dash-columns">
+ 
+ 
+ ### FILE: frontend/src/pages/Wizard.jsx
+@@ -2024,13 +2047,20 @@
+ import ReactDOM from "react-dom/client";
+ import App from "./App";
+ import "./App.css";
++import "./styles/theme_modern.css";
++// To try others later:
++// import "./styles/theme_classic.css";
++// import "./styles/theme_minimal.css";
+ import { ToastProvider } from "./context/ToastContext";
++import { AuthProvider } from "./context/AuthContext";
+ 
+ ReactDOM.createRoot(document.getElementById("root")).render(
+   <React.StrictMode>
+-    <ToastProvider>
+-      <App />
+-    </ToastProvider>
++    <AuthProvider>
++      <ToastProvider>
++        <App />
++      </ToastProvider>
++    </AuthProvider>
+   </React.StrictMode>
+ );
+ 

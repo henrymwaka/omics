@@ -1,0 +1,506 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-16 16:00:02
+Current: omics_snapshot_2025-11-16_16-00.txt
+Previous: omics_snapshot_2025-11-16_12-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-16_12-00.txt	2025-11-16 12:00:02.294495980 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-16_16-00.txt	2025-11-16 16:00:01.655623220 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-16 12:00:01
++Generated on: 2025-11-16 16:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -189,6 +189,7 @@
+ │   ├── README.md
+ │   ├── src
+ │   │   ├── App.css
++│   │   ├── App.css.save
+ │   │   ├── App.jsx
+ │   │   ├── assets
+ │   │   ├── components
+@@ -284,6 +285,7 @@
+ │   ├── omics_changes_2025-11-16_00-00.txt
+ │   ├── omics_changes_2025-11-16_04-00.txt
+ │   ├── omics_changes_2025-11-16_08-00.txt
++│   ├── omics_changes_2025-11-16_12-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -330,19 +332,14 @@
+ │   ├── omics_snapshot_2025-11-16_04-00.zip
+ │   ├── omics_snapshot_2025-11-16_08-00.txt
+ │   ├── omics_snapshot_2025-11-16_08-00.zip
+-│   └── omics_snapshot_2025-11-16_12-00.txt
++│   ├── omics_snapshot_2025-11-16_12-00.txt
++│   ├── omics_snapshot_2025-11-16_12-00.zip
++│   └── omics_snapshot_2025-11-16_16-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+ │   │   ├── img
+ │   │   └── js
+-│   ├── assets
+-│   │   ├── index-B2hFtoHL.js
+-│   │   ├── index-BEpASWmS.css
+-│   │   ├── index-BFCYfDLt.js
+-│   │   ├── index-BQHktLdb.css
+-│   │   ├── index-C1M99Sdn.css
+-│   │   └── index-D7LxsZmH.js
+ │   ├── drf-yasg
+ │   │   ├── immutable.js
+ │   │   ├── immutable.min.js
+@@ -409,7 +406,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-179 directories, 221 files
++178 directories, 219 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -528,7 +525,9 @@
+ TEMPLATES = [
+     {
+         "BACKEND": "django.template.backends.django.DjangoTemplates",
+-        "DIRS": [BASE_DIR / "templates"],
++        "DIRS": [
++            BASE_DIR / "frontend" / "dist",
++        ],
+         "APP_DIRS": True,
+         "OPTIONS": {
+             "context_processors": [
+@@ -646,85 +645,49 @@
+         "simple": {
+             "format": "{levelname}: {message}",
+             "style": "{",
+-        },
+-    },
+ 
+ 
+ ### FILE: omics/urls.py
+ -----------------------------------
+ # ===============================================================
+ # omics/urls.py
+-# Root URL routing for the ResLab Omics Platform
++# Root URL routing for the ResLab Omics Platform (SPA + API)
+ # ===============================================================
+ 
+ from django.contrib import admin
+-from django.urls import path, include
++from django.urls import path, include, re_path
++from django.views.generic import TemplateView
+ from django.conf import settings
+ from django.conf.urls.static import static
+-from .views import LandingView
+-
+-# === Swagger / OpenAPI ===
+-from rest_framework import permissions
+-from drf_yasg.views import get_schema_view
+-from drf_yasg import openapi
+ 
+-schema_view = get_schema_view(
+-    openapi.Info(
+-        title="ResLab Omics Platform API",
+-        default_version="v1",
+-        description="Endpoints for projects, samples, organism taxonomy, tissues, jobs, and results.",
+-        contact=openapi.Contact(email="support@reslab.dev"),
+-        license=openapi.License(name="Apache 2.0"),
+-    ),
+-    public=True,
+-    permission_classes=(permissions.AllowAny,),
+-)
++# ===============================================================
++# API & Documentation
++# ===============================================================
+ 
+-# -----------------------------------------------------------------
+-# URL Patterns
+-# -----------------------------------------------------------------
+ urlpatterns = [
+-    # === Landing page ===
+-    path("", LandingView.as_view(), name="landing"),
+-
+-    # === Admin Interface ===
++    # Admin
+     path("admin/", admin.site.urls),
+ 
+-    # === Core API (ONLY this one) ===
+-    # All REST endpoints from omics_core → /api/*
++    # Core API (omics_core)
+     path("api/", include("omics_core.urls")),
+ 
+-    # === Legacy/Extra API (if still needed) ===
++    # Extra/legacy API
+     path("api/extra/", include("api.urls")),
++]
+ 
+-    # === Raw OpenAPI schema (JSON) ===
+-    path(
+-        "api/swagger.json",
+-        schema_view.without_ui(cache_timeout=0),
+-        name="schema-swagger-json",
+-    ),
+-    path(
+-        "api/openapi.json",
+-        schema_view.without_ui(cache_timeout=0),
+-        name="schema-openapi-json",
+-    ),
++# ===============================================================
++# SPA FRONTEND
++# Catch-all route: React handles all non-API paths
++# ===============================================================
+ 
+-    # === API Documentation (Swagger UI + ReDoc) ===
+-    path(
+-        "api/docs/",
+-        schema_view.with_ui("swagger", cache_timeout=0),
+-        name="swagger-ui",
+-    ),
+-    path(
+-        "api/redoc/",
+-        schema_view.with_ui("redoc", cache_timeout=0),
+-        name="redoc-ui",
+-    ),
++urlpatterns += [
++    re_path(r"^(?!api/)(?:.*)/?$", TemplateView.as_view(template_name="index.html")),
+ ]
+ 
+-# -----------------------------------------------------------------
+-# Static & Media Files (Development mode)
+-# -----------------------------------------------------------------
++# ===============================================================
++# Static & Media files (for DEBUG mode)
++# ===============================================================
++
+ if settings.DEBUG:
+     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+@@ -1613,13 +1576,28 @@
+ ### FILE: frontend/src/pages/Dashboard.jsx
+ -----------------------------------
+ // src/pages/Dashboard.jsx
++// -----------------------------------------------------------------------------
++// Dashboard Page
++// -----------------------------------------------------------------------------
++// This page provides the main interface for:
++// - Viewing existing projects
++// - Selecting a project to load its samples
++// - Uploading sequencing files to samples
++// - Creating new projects
++//
++// The layout and global navigation come from GlobalLayout.
++// This component ONLY handles dashboard logic and content.
++// -----------------------------------------------------------------------------
++
+ import { useEffect, useMemo, useState } from "react";
+ import "../App.css";
+-import NavBar from "../components/NavBar";
+ 
+ const API_BASE = "/api";
+ 
+ function Dashboard() {
++  // ---------------------------------------------------------------------------
++  // State
++  // ---------------------------------------------------------------------------
+   const [projects, setProjects] = useState([]);
+   const [selectedProject, setSelectedProject] = useState(null);
+   const [samples, setSamples] = useState([]);
+@@ -1631,15 +1609,17 @@
+   const [newProjectName, setNewProjectName] = useState("");
+   const [newProjectDescription, setNewProjectDescription] = useState("");
+ 
+-  // -------------------------------------------------------------------
+-  // Data loaders
+-  // -------------------------------------------------------------------
++  // ---------------------------------------------------------------------------
++  // Load all projects
++  // ---------------------------------------------------------------------------
+   const fetchProjects = async () => {
+     setLoading(true);
+     setError("");
++
+     try {
+       const res = await fetch(`${API_BASE}/projects/`);
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
++
+       const data = await res.json();
+       setProjects(data);
+     } catch {
+@@ -1649,24 +1629,29 @@
+     }
+   };
+ 
++  // ---------------------------------------------------------------------------
++  // Load samples + their files for a selected project
++  // ---------------------------------------------------------------------------
+   const fetchSamples = async (projectId) => {
+     if (!projectId) return;
++
+     setLoading(true);
+     setError("");
++
+     try {
+       const res = await fetch(`${API_BASE}/samples/?project=${projectId}`);
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
++
+       const data = await res.json();
+       setSamples(data);
+ 
+-      const fileMap = {};
++      // Load files for each sample
++      const map = {};
+       for (const s of data) {
+         const resF = await fetch(`${API_BASE}/files/?sample=${s.id}`);
+-        if (resF.ok) {
+-          fileMap[s.id] = await resF.json();
+-        }
++        if (resF.ok) map[s.id] = await resF.json();
+       }
+-      setFiles(fileMap);
++      setFiles(map);
+     } catch {
+       setError("Failed to load samples for this project.");
+     } finally {
+@@ -1674,26 +1659,30 @@
+     }
+   };
+ 
++  // Load projects on first render
+   useEffect(() => {
+     fetchProjects();
+   }, []);
+ 
+-  // -------------------------------------------------------------------
+-  // Derived stats
+-  // -------------------------------------------------------------------
++  // ---------------------------------------------------------------------------
++  // Summary Statistics
++  // ---------------------------------------------------------------------------
+   const stats = useMemo(() => {
+-    const totalProjects = projects.length;
+-    const totalSamples = samples.length;
+-    const totalFiles = Object.values(files).reduce(
+-      (acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0),
+-      0
+-    );
+-    return { totalProjects, totalSamples, totalFiles };
++    return {
++      totalProjects: projects.length,
++      totalSamples: samples.length,
++      totalFiles: Object.values(files).reduce(
++        (sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0),
++        0
++      ),
++    };
+   }, [projects, samples, files]);
+ 
+-  // -------------------------------------------------------------------
++  // ---------------------------------------------------------------------------
+   // Handlers
+-  // -------------------------------------------------------------------
++  // ---------------------------------------------------------------------------
++
++  // Select a project and load its samples
+   const handleSelectProject = (p) => {
+     setSelectedProject(p);
+     setSamples([]);
+@@ -1701,13 +1690,17 @@
+     fetchSamples(p.id);
+   };
+ 
++  // Create a new project
+   const handleCreateProject = async (e) => {
+     e.preventDefault();
++
+     if (!newProjectName.trim()) {
+       setError("Project name is required.");
+       return;
+     }
++
+     setError("");
++
+     try {
+       const res = await fetch(`${API_BASE}/projects/`, {
+         method: "POST",
+@@ -1717,7 +1710,10 @@
+           description: newProjectDescription.trim(),
+         }),
+       });
++
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
++
++      // Reset form and refresh projects list
+       setNewProjectName("");
+       setNewProjectDescription("");
+       fetchProjects();
+@@ -1726,9 +1722,11 @@
+     }
+   };
+ 
++  // Upload a file for a given sample
+   const handleUploadFile = async (e, sampleId, fileType) => {
+     const file = e.target.files[0];
+     if (!file) return;
++
+     setUploadingSampleId(sampleId);
+     setError("");
+ 
+@@ -1742,8 +1740,10 @@
+         method: "POST",
+         body: formData,
+       });
++
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+ 
++      // Reload files for that sample
+       const resF = await fetch(`${API_BASE}/files/?sample=${sampleId}`);
+       if (resF.ok) {
+         const updated = await resF.json();
+@@ -1756,67 +1756,50 @@
+     }
+   };
+ 
+-  // -------------------------------------------------------------------
++  // ---------------------------------------------------------------------------
+   // Render
+-  // -------------------------------------------------------------------
++  // ---------------------------------------------------------------------------
+   return (
+-    <>
+-      <NavBar />
++    <div className="dash-root">
+ 
+-      <div className="dash-root">
+-        {error && <div className="alert error">{error}</div>}
+-        {loading && <div className="alert info">Loading…</div>}
+-
+-        {/* Top summary strip */}
+-        <section className="dash-summary-strip">
+-          <div className="dash-summary-card">
+-            <span className="dash-summary-label">Projects</span>
+-            <span className="dash-summary-value">{stats.totalProjects}</span>
+-          </div>
+-          <div className="dash-summary-card">
+-            <span className="dash-summary-label">Samples in view</span>
+-            <span className="dash-summary-value">{stats.totalSamples}</span>
+-          </div>
+-          <div className="dash-summary-card">
+-            <span className="dash-summary-label">Files in view</span>
+-            <span className="dash-summary-value">{stats.totalFiles}</span>
+-          </div>
+-        </section>
+-
+-        <section className="dash-columns">
+-          {/* Left - project list and new project form */}
+-          <div className="dash-column-left">
+-            <div className="card">
+-              <div className="card-header-row">
+-                <h2>Projects</h2>
+-                <button
+-                  type="button"
+-                  className="btn small"
+-                  onClick={fetchProjects}
+-                >
+-                  Refresh
+-                </button>
+-              </div>
+-              <ul className="project-list">
+-                {projects.map((p) => (
+-                  <li
+-                    key={p.id}
+-                    className={
+-                      selectedProject && selectedProject.id === p.id
+-                        ? "project-item active"
+-                        : "project-item"
+-                    }
+-                    onClick={() => handleSelectProject(p)}
+-                  >
+-                    <div className="project-name">{p.name}</div>
+-                    {p.description && (
+-                      <div className="project-desc">{p.description}</div>
+-                    )}
++      {/* Error + loading notifications */}
++      {error && <div className="alert error">{error}</div>}
++      {loading && <div className="alert info">Loading…</div>}
++
++      {/* ---------------------------------------------------------------------
++           Summary strip: quick glance at projects, samples, files
++         --------------------------------------------------------------------- */}
++      <section className="dash-summary-strip">
++        <div className="dash-summary-card">
++          <span className="dash-summary-label">Projects</span>
++          <span className="dash-summary-value">{stats.totalProjects}</span>
++        </div>
++        <div className="dash-summary-card">
+ 
+ 
+ ### FILE: frontend/src/pages/Wizard.jsx
+ -----------------------------------
+ // src/pages/Wizard.jsx
++// -----------------------------------------------------------------------------
++// Wizard Page
++// -----------------------------------------------------------------------------
++// This component manages a three-step workflow:
++//
++// 1. Create new project
++// 2. Add sample to an existing project
++// 3. (Future) Analyze data
++//
++// The Wizard state machine is controlled by the `mode` variable:
++//
++//   ""                → Show main menu
++//   "create-project"  → Show project creation form
++//   "add-sample"      → Show project selector + SampleWizard
++//   "analyze-data"    → Placeholder for upcoming analysis module
++//
++// The layout wrapper (GlobalLayout) manages navigation and page shell.
++// This file focuses only on workflow logic and UI.
++// -----------------------------------------------------------------------------
++
+ import { useState, useEffect } from "react";
+ import SampleWizard from "../components/SampleWizard";
+ import { useToast } from "../context/ToastContext";
+@@ -1825,16 +1808,19 @@
+ const API_BASE = "/api";
+ 
+ function Wizard() {
+-  const [mode, setMode] = useState("");
+-  const [projects, setProjects] = useState([]);
+-  const [selectedProject, setSelectedProject] = useState("");
+-  const [loading, setLoading] = useState(false);
+-  const [error, setError] = useState("");
++  // ---------------------------------------------------------------------------
++  // Local state
++  // ---------------------------------------------------------------------------
++  const [mode, setMode] = useState("");               // Wizard mode selector
++  const [projects, setProjects] = useState([]);       // Existing project list
++  const [selectedProject, setSelectedProject] = useState(""); // Selected project
++  const [loading, setLoading] = useState(false);      // Project loading flag
++  const [error, setError] = useState("");             // Error display
+   const [newProjectName, setNewProjectName] = useState("");
+   const [newProjectDescription, setNewProjectDescription] = useState("");
+-  const [creating, setCreating] = useState(false);
++  const [creating, setCreating] = useState(false);    // Disable button while saving
+ 
+-  const { showToast } = useToast(); // use global toast
++  const { showToast } = useToast();                   // Global toast notifications
+ 
+   const handleSelect = (m) => setMode(m);
+   const handleBack = () => {
+@@ -1843,13 +1829,14 @@
+     setSelectedProject("");
+   };
+ 
+-  // ------------------------------------------------------------
+-  // Load existing projects
+-  // ------------------------------------------------------------
++  // ---------------------------------------------------------------------------
++  // Load projects only when entering the "add-sample" mode
++  // ---------------------------------------------------------------------------
+   useEffect(() => {
+     if (mode === "add-sample") {
+       setLoading(true);

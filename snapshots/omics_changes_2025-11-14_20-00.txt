@@ -1,0 +1,82 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-14 20:00:02
+Current: omics_snapshot_2025-11-14_20-00.txt
+Previous: omics_snapshot_2025-11-14_16-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-14_16-00.txt	2025-11-14 16:00:02.378957738 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-14_20-00.txt	2025-11-14 20:00:01.699647285 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-14 16:00:01
++Generated on: 2025-11-14 20:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -268,6 +268,7 @@
+ │   ├── omics_changes_2025-11-14_04-00.txt
+ │   ├── omics_changes_2025-11-14_08-00.txt
+ │   ├── omics_changes_2025-11-14_12-00.txt
++│   ├── omics_changes_2025-11-14_16-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -292,7 +293,9 @@
+ │   ├── omics_snapshot_2025-11-14_08-00.zip
+ │   ├── omics_snapshot_2025-11-14_12-00.txt
+ │   ├── omics_snapshot_2025-11-14_12-00.zip
+-│   └── omics_snapshot_2025-11-14_16-00.txt
++│   ├── omics_snapshot_2025-11-14_16-00.txt
++│   ├── omics_snapshot_2025-11-14_16-00.zip
++│   └── omics_snapshot_2025-11-14_20-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -371,7 +374,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-179 directories, 183 files
++179 directories, 186 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -1120,29 +1123,31 @@
+     queryset = Project.objects.all().order_by("-created_at")
+     serializer_class = ProjectSerializer
+ 
+-
+ # ---------------------------------------------------------------
+-# Organism API
++# Organism API (fixed strict kingdom + search filtering)
+ # ---------------------------------------------------------------
+ class OrganismViewSet(viewsets.ModelViewSet):
+-    queryset = Organism.objects.all().order_by("scientific_name")
+     serializer_class = OrganismSerializer
+ 
+     def get_queryset(self):
+-        qs = super().get_queryset()
+-        search = self.request.query_params.get("search")
++        qs = Organism.objects.all()  # start with full table
++
+         kingdom = self.request.query_params.get("kingdom")
++        search = self.request.query_params.get("search")
+ 
++        # 1. STRICTLY filter by kingdom first
+         if kingdom:
+             qs = qs.filter(kingdom__iexact=kingdom)
+ 
++        # 2. Then apply search
+         if search:
+             qs = qs.filter(
+                 models.Q(scientific_name__icontains=search) |
+                 models.Q(common_name__icontains=search)
+             )
+ 
+-        return qs[:100]
++        # 3. Clean output
++        return qs.order_by("scientific_name")[:100]
+ 
+ 
+ # ---------------------------------------------------------------

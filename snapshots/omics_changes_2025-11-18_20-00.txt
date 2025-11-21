@@ -1,0 +1,506 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-18 20:00:03
+Current: omics_snapshot_2025-11-18_20-00.txt
+Previous: omics_snapshot_2025-11-18_16-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-18_16-00.txt	2025-11-18 16:00:02.165267422 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-18_20-00.txt	2025-11-18 20:00:02.721377549 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-18 16:00:01
++Generated on: 2025-11-18 20:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -304,6 +304,7 @@
+ │   ├── omics_changes_2025-11-18_04-00.txt
+ │   ├── omics_changes_2025-11-18_08-00.txt
+ │   ├── omics_changes_2025-11-18_12-00.txt
++│   ├── omics_changes_2025-11-18_16-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -376,7 +377,9 @@
+ │   ├── omics_snapshot_2025-11-18_08-00.zip
+ │   ├── omics_snapshot_2025-11-18_12-00.txt
+ │   ├── omics_snapshot_2025-11-18_12-00.zip
+-│   └── omics_snapshot_2025-11-18_16-00.txt
++│   ├── omics_snapshot_2025-11-18_16-00.txt
++│   ├── omics_snapshot_2025-11-18_16-00.zip
++│   └── omics_snapshot_2025-11-18_20-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -453,7 +456,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-181 directories, 263 files
++181 directories, 266 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -1516,18 +1519,19 @@
+ 
+ ### FILE: frontend/src/pages/Dashboard.jsx
+ -----------------------------------
+-// src/pages/Dashboard.jsx
+-// -----------------------------------------------------------------------------
+-// ResLab Omics Dashboard
+-// -----------------------------------------------------------------------------
+-// Responsibilities:
+-// - Load and list projects
+-// - Filter and display samples by selected project
+-// - Show per-project files using nested `files` from the API
+-// - Allow creating new projects
+-// - Allow uploading FASTQ files per sample
+-// - Allow launching and inspecting FastQC jobs
+-// -----------------------------------------------------------------------------
++/* =============================================================================
++   Dashboard.jsx
++   ResLab Omics Platform
++   =============================================================================
++   Responsibilities:
++   - Fetch and list all projects
++   - Fetch samples for a selected project
++   - Display files attached to each sample
++   - Create new projects
++   - Upload files to a sample
++   - Trigger and view FastQC jobs
++   - Display QC summary and job history
++   ============================================================================= */
+ 
+ import { useEffect, useMemo, useState } from "react";
+ import "../App.css";
+@@ -1536,9 +1540,20 @@
+ const API_BASE = "/api";
+ 
+ function Dashboard() {
+-  // ---------------------------------------------------------------------------
+-  // State
+-  // ---------------------------------------------------------------------------
++  /* ---------------------------------------------------------------------------
++     STATE VARIABLES
++     ---------------------------------------------------------------------------
++     projects[]            – full list of projects from API
++     selectedProject       – project object currently chosen
++     samples[]             – sample list for selected project
++     newProjectName        – name entered in form
++     newProjectDescription – description entered in form
++     qcInfo                – fastqc summary object
++     qcMap                 – sampleId → QC PASS/WARN/FAIL
++     jobHistory[]          – past QC jobs for sample
++     uploadingSampleId     – indicates file-upload progress
++     loading/error         – UI alerts
++     --------------------------------------------------------------------------- */
+   const { showToast } = useToast();
+ 
+   const [projects, setProjects] = useState([]);
+@@ -1547,22 +1562,25 @@
+   const [samples, setSamples] = useState([]);
+   const [loading, setLoading] = useState(false);
+   const [error, setError] = useState("");
++
+   const [uploadingSampleId, setUploadingSampleId] = useState(null);
+ 
+   const [newProjectName, setNewProjectName] = useState("");
+   const [newProjectDescription, setNewProjectDescription] = useState("");
+ 
+-  // QC related state
+-  const [qcInfo, setQcInfo] = useState(null); // currently viewed QC panel
++  const [qcInfo, setQcInfo] = useState(null);
+   const [qcLoading, setQcLoading] = useState(false);
+-  const [qcMap, setQcMap] = useState({}); // sample_id -> overall_status
+-
++  const [qcMap, setQcMap] = useState({});
+   const [jobHistory, setJobHistory] = useState([]);
+   const [jobHistoryLoading, setJobHistoryLoading] = useState(false);
+ 
+-  // ---------------------------------------------------------------------------
+-  // Load all projects
+-  // ---------------------------------------------------------------------------
++  /* ----------------------------------------------------------------------------
++     FETCH PROJECT LIST
++     ---------------------------------------------------------------------------
++     - Calls GET /api/projects/
++     - On success → updates `projects`
++     - On failure → displays error
++     ---------------------------------------------------------------------------- */
+   const fetchProjects = async () => {
+     setLoading(true);
+     setError("");
+@@ -1573,16 +1591,20 @@
+       const data = await res.json();
+       setProjects(data);
+     } catch (e) {
+-      console.error(e);
+       setError("Failed to load projects.");
++      console.error("PROJECT LOAD ERROR:", e);
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
+-  // ---------------------------------------------------------------------------
+-  // Load samples from API, then filter by project on the server
+-  // ---------------------------------------------------------------------------
++  /* ----------------------------------------------------------------------------
++     FETCH SAMPLES FOR ONE PROJECT
++     ---------------------------------------------------------------------------
++     - Calls GET /api/samples/?project=<id>
++     - Filters by project on the frontend as extra safety
++     - Updates samples[]
++     ---------------------------------------------------------------------------- */
+   const fetchSamples = async (projectId) => {
+     if (!projectId) return;
+ 
+@@ -1594,42 +1616,47 @@
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+ 
+       const data = await res.json();
+-
+-      // Defensive filter
+       const filtered = data.filter((s) => s.project === projectId);
+       setSamples(filtered);
+     } catch (e) {
+-      console.error(e);
++      console.error("SAMPLE LOAD ERROR:", e);
+       setError("Failed to load samples for this project.");
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
+-  // Initial project list
++  /* ----------------------------------------------------------------------------
++     INITIAL LOAD: FETCH PROJECTS ON PAGE LOAD
++     ---------------------------------------------------------------------------- */
+   useEffect(() => {
+     fetchProjects();
+   }, []);
+ 
+-  // ---------------------------------------------------------------------------
+-  // Summary statistics
+-  // ---------------------------------------------------------------------------
++  /* ----------------------------------------------------------------------------
++     SUMMARY STATISTICS
++     ---------------------------------------------------------------------------
++     - totalProjects = # of projects
++     - totalSamples  = # of samples in current project
++     - totalFiles    = sum of file counts across all samples
++     ---------------------------------------------------------------------------- */
+   const stats = useMemo(() => {
+     const totalProjects = projects.length;
+     const totalSamples = samples.length;
+-    const totalFiles = samples.reduce(
+-      (sum, s) => sum + (Array.isArray(s.files) ? s.files.length : 0),
+-      0
+-    );
++    const totalFiles = samples.reduce((sum, s) => {
++      return sum + (Array.isArray(s.files) ? s.files.length : 0);
++    }, 0);
+ 
+     return { totalProjects, totalSamples, totalFiles };
+   }, [projects, samples]);
+ 
+-  // ---------------------------------------------------------------------------
+-  // Handlers
+-  // ---------------------------------------------------------------------------
+-
+-  // Select a project and load its samples
++  /* ----------------------------------------------------------------------------
++     SELECT PROJECT
++     ---------------------------------------------------------------------------
++     - Sets the selected project
++     - Resets QC info
++     - Fetches samples
++     ---------------------------------------------------------------------------- */
+   const handleSelectProject = (project) => {
+     setSelectedProject(project);
+     setSamples([]);
+@@ -1638,7 +1665,13 @@
+     fetchSamples(project.id);
+   };
+ 
+-  // Create a new project
++  /* ----------------------------------------------------------------------------
++     CREATE NEW PROJECT
++     ---------------------------------------------------------------------------
++     - Calls POST /api/projects/
++     - Sends JSON: { name, description }
++     - Refreshes project list afterwards
++     ---------------------------------------------------------------------------- */
+   const handleCreateProject = async (e) => {
+     e.preventDefault();
+ 
+@@ -1650,14 +1683,15 @@
+     setError("");
+ 
+     try {
+-      const res = await fetch(`${API_BASE}/projects/`, {
+-        method: "POST",
+-        headers: { "Content-Type": "application/json" },
+-        body: JSON.stringify({
+-          name: newProjectName.trim(),
+-          description: newProjectDescription.trim(),
+-        }),
+-      });
++const res = await fetch(`${API_BASE}/projects/`, {
++  method: "POST",
++  credentials: "include",
++  headers: { "Content-Type": "application/json" },
++  body: JSON.stringify({
++    name: newProjectName.trim(),
++    description: newProjectDescription.trim(),
++  }),
++});
+ 
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+ 
+@@ -1666,12 +1700,18 @@
+       await fetchProjects();
+       showToast("Project created.", "success");
+     } catch (e) {
+-      console.error(e);
++      console.error("PROJECT CREATE ERROR:", e);
+       setError("Failed to create project.");
+     }
+   };
+ 
+-  // Upload a file for a given sample, then refresh the sample list
++  /* ----------------------------------------------------------------------------
++     UPLOAD FILE TO SAMPLE
++     ---------------------------------------------------------------------------
++     - Calls POST /api/files/ using multipart FormData
++     - Automatically attaches: sample, file_type, file
++     - Refreshes the sample list after upload
++     ---------------------------------------------------------------------------- */
+   const handleUploadFile = async (e, sampleId, fileType) => {
+     const file = e.target.files[0];
+     if (!file || !selectedProject) return;
+@@ -1679,67 +1719,22 @@
+     setUploadingSampleId(sampleId);
+     setError("");
+ 
+-    try {
+-      const formData = new FormData();
+-      formData.append("sample", sampleId);
+-      formData.append("file_type", fileType);
+-      formData.append("file", file);
+-
+-      const res = await fetch(`${API_BASE}/files/`, {
+-        method: "POST",
+-        body: formData,
+-      });
+-
+-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+-
+-      await fetchSamples(selectedProject.id);
+-      showToast("File uploaded.", "success");
+-    } catch (e) {
+-      console.error(e);
+-      setError("Failed to upload file.");
+-      showToast("File upload failed.", "error");
+-    } finally {
+-      setUploadingSampleId(null);
+-      e.target.value = "";
+-    }
+-  };
+-
+-  // Run FastQC job for a sample
+-  const handleRunFastqc = async (sampleId) => {
+-    try {
+-      const payload = {
+-        sample: sampleId,
+-        job_type: "FASTQC",
+-        status: "pending",
+-      };
+-
+-      const res = await fetch(`${API_BASE}/jobs/`, {
+-        method: "POST",
+-        headers: { "Content-Type": "application/json" },
+ 
+ 
+ ### FILE: frontend/src/pages/Wizard.jsx
+ -----------------------------------
+-// src/pages/Wizard.jsx
+-// -----------------------------------------------------------------------------
+-// Wizard Page
+-// -----------------------------------------------------------------------------
+-// This component manages a three-step workflow:
+-//
+-// 1. Create new project
+-// 2. Add sample to an existing project
+-// 3. (Future) Analyze data
+-//
+-// The Wizard state machine is controlled by the `mode` variable:
+-//
+-//   ""                → Show main menu
+-//   "create-project"  → Show project creation form
+-//   "add-sample"      → Show project selector + SampleWizard
+-//   "analyze-data"    → Placeholder for upcoming analysis module
+-//
+-// The layout wrapper (GlobalLayout) manages navigation and page shell.
+-// This file focuses only on workflow logic and UI.
+-// -----------------------------------------------------------------------------
++/* =============================================================================
++   Wizard.jsx
++   ResLab Omics Platform
++   =============================================================================
++   Responsibilities:
++   - High level wizard flow for:
++       1. Creating a new project
++       2. Adding a sample to an existing project
++       3. (Placeholder) Analysis module
++   - Coordinates SampleWizard component
++   - Loads project list when required
++   ============================================================================= */
+ 
+ import { useState, useEffect } from "react";
+ import SampleWizard from "../components/SampleWizard";
+@@ -1749,30 +1744,52 @@
+ const API_BASE = "/api";
+ 
+ function Wizard() {
+-  // ---------------------------------------------------------------------------
+-  // Local state
+-  // ---------------------------------------------------------------------------
+-  const [mode, setMode] = useState("");               // Wizard mode selector
+-  const [projects, setProjects] = useState([]);       // Existing project list
+-  const [selectedProject, setSelectedProject] = useState(""); // Selected project
+-  const [loading, setLoading] = useState(false);      // Project loading flag
+-  const [error, setError] = useState("");             // Error display
++  /* ---------------------------------------------------------------------------
++     STATE VARIABLES
++     ---------------------------------------------------------------------------
++     mode                 – wizard screen selector
++     projects[]           – list of projects (only used in add-sample mode)
++     selectedProject      – project id selected in dropdown
++     loading              – shows when project list is being fetched
++     error                – form / fetch feedback
++     newProjectName       – bound to form input
++     newProjectDescription– bound to form input
++     creating             – locks create button to prevent double submit
++     --------------------------------------------------------------------------- */
++  const [mode, setMode] = useState("");
++  const [projects, setProjects] = useState([]);
++  const [selectedProject, setSelectedProject] = useState("");
++
++  const [loading, setLoading] = useState(false);
++  const [error, setError] = useState("");
++
+   const [newProjectName, setNewProjectName] = useState("");
+   const [newProjectDescription, setNewProjectDescription] = useState("");
+-  const [creating, setCreating] = useState(false);    // Disable button while saving
++  const [creating, setCreating] = useState(false);
+ 
+-  const { showToast } = useToast();                   // Global toast notifications
++  const { showToast } = useToast();
+ 
++  /* ---------------------------------------------------------------------------
++     MODE CONTROL
++     ---------------------------------------------------------------------------
++     handleSelect(m)  – move to selected mode
++     handleBack()     – return to main menu and clear errors
++     --------------------------------------------------------------------------- */
+   const handleSelect = (m) => setMode(m);
++
+   const handleBack = () => {
+     setMode("");
+     setError("");
+     setSelectedProject("");
+   };
+ 
+-  // ---------------------------------------------------------------------------
+-  // Load projects only when entering the "add-sample" mode
+-  // ---------------------------------------------------------------------------
++  /* ---------------------------------------------------------------------------
++     LOAD PROJECT LIST WHEN ENTERING "add-sample" MODE
++     ---------------------------------------------------------------------------
++     - Calls GET /api/projects/
++     - Ensures we do not load all projects on initial page load
++     - Runs only when mode transitions to "add-sample"
++     --------------------------------------------------------------------------- */
+   useEffect(() => {
+     if (mode === "add-sample") {
+       setLoading(true);
+@@ -1786,11 +1803,16 @@
+     }
+   }, [mode]);
+ 
+-  // ---------------------------------------------------------------------------
+-  // Create new project
+-  // ---------------------------------------------------------------------------
++  /* ---------------------------------------------------------------------------
++     CREATE NEW PROJECT
++     ---------------------------------------------------------------------------
++     - Calls POST /api/projects/
++     - Shows toast on success or failure
++     - After success → moves user directly to sample creation screen
++     --------------------------------------------------------------------------- */
+   const handleCreateProject = async (e) => {
+     e.preventDefault();
++
+     if (!newProjectName.trim()) {
+       setError("Project name is required.");
+       return;
+@@ -1800,25 +1822,29 @@
+     setError("");
+ 
+     try {
+-      const res = await fetch(`${API_BASE}/projects/`, {
+-        method: "POST",
+-        headers: { "Content-Type": "application/json" },
+-        body: JSON.stringify({
+-          name: newProjectName,
+-          description: newProjectDescription,
+-        }),
+-      });
++const res = await fetch(`${API_BASE}/projects/`, {
++  method: "POST",
++  credentials: "include",
++  headers: { "Content-Type": "application/json" },
++  body: JSON.stringify({
++    name: newProjectName,
++    description: newProjectDescription,
++  }),
++});
++
++      if (!res.ok) throw new Error("Create failed");
+ 
+-      if (!res.ok) throw new Error();
+       const data = await res.json();
+ 
+       showToast(`Project “${data.name}” created successfully`, "success");
+ 
+-      // Reset fields
+       setNewProjectName("");
+       setNewProjectDescription("");
+ 
+-      // Return to menu after success
++      /* 
++         Important: after creating a project, we jump user into "add-sample"
++         mode so they can immediately register their first sample.
++      */
+       setTimeout(() => setMode("add-sample"), 3500);
+     } catch {
+       showToast("Failed to create project", "error");
+@@ -1827,21 +1853,22 @@
+     }
+   };
+ 
+-  // =============================================================================
+-  // MODE 1: ADD SAMPLE TO PROJECT
+-  // =============================================================================
++  /* =============================================================================
++     MODE 1: ADD SAMPLE TO PROJECT
++     ============================================================================= */
+   if (mode === "add-sample") {
+     return (
+       <div className="layout">
+         <main className="main">
+           <div className="card">
++
+             <button className="btn small" onClick={handleBack}>

@@ -1,0 +1,421 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-15 20:00:02
+Current: omics_snapshot_2025-11-15_20-00.txt
+Previous: omics_snapshot_2025-11-15_16-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-15_16-00.txt	2025-11-15 16:00:02.779706715 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-15_20-00.txt	2025-11-15 20:00:02.181240258 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-15 16:00:01
++Generated on: 2025-11-15 20:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -238,6 +238,7 @@
+ │   ├── migrations
+ │   │   ├── 0001_initial.py
+ │   │   ├── 0002_omicsjob_metadata.py
++│   │   ├── 0003_organism_search_name_alter_organism_kingdom_and_more.py
+ │   │   ├── __init__.py
+ │   │   └── __pycache__
+ │   ├── models.py
+@@ -278,6 +279,7 @@
+ │   ├── omics_changes_2025-11-15_04-00.txt
+ │   ├── omics_changes_2025-11-15_08-00.txt
+ │   ├── omics_changes_2025-11-15_12-00.txt
++│   ├── omics_changes_2025-11-15_16-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -314,7 +316,9 @@
+ │   ├── omics_snapshot_2025-11-15_08-00.zip
+ │   ├── omics_snapshot_2025-11-15_12-00.txt
+ │   ├── omics_snapshot_2025-11-15_12-00.zip
+-│   └── omics_snapshot_2025-11-15_16-00.txt
++│   ├── omics_snapshot_2025-11-15_16-00.txt
++│   ├── omics_snapshot_2025-11-15_16-00.zip
++│   └── omics_snapshot_2025-11-15_20-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -393,7 +397,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-179 directories, 205 files
++179 directories, 209 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -726,6 +730,7 @@
+ # ---------------------------------------------------------------
+ class Organism(models.Model):
+     """Standardized organism reference with taxonomy integration."""
++
+     KINGDOM_CHOICES = [
+         ("Plant", "Plant"),
+         ("Animal", "Animal"),
+@@ -733,12 +738,24 @@
+         ("Bacteria", "Bacteria"),
+         ("Virus", "Virus"),
+         ("Archaea", "Archaea"),
++        ("Eukaryota", "Eukaryota"),
+     ]
++
+     scientific_name = models.CharField(max_length=200, unique=True)
+     common_name = models.CharField(max_length=100, blank=True)
+     kingdom = models.CharField(max_length=50, choices=KINGDOM_CHOICES)
+     taxonomy_id = models.PositiveIntegerField(
+-        null=True, blank=True, help_text="NCBI taxonomy ID"
++        null=True,
++        blank=True,
++        help_text="NCBI taxonomy ID"
++    )
++
++    # New indexed lowercase field for very fast search
++    search_name = models.CharField(
++        max_length=200,
++        default="",
++        db_index=True,
++        help_text="Lowercased scientific_name for fast indexed search"
+     )
+ 
+     def __str__(self):
+@@ -747,11 +764,15 @@
+ 
+ class TissueType(models.Model):
+     """Controlled vocabulary for anatomical or culture source."""
++
+     KINGDOM_CHOICES = Organism.KINGDOM_CHOICES
++
+     name = models.CharField(max_length=100)
+     kingdom = models.CharField(max_length=50, choices=KINGDOM_CHOICES)
+     ontology_id = models.CharField(
+-        max_length=50, blank=True, help_text="UBERON / PO term ID"
++        max_length=50,
++        blank=True,
++        help_text="UBERON or PO term ID"
+     )
+ 
+     class Meta:
+@@ -776,6 +797,7 @@
+ 
+ class Sample(models.Model):
+     """Biological sample metadata linked to controlled vocabularies."""
++
+     DATA_TYPES = [
+         ("DNA", "DNA-seq"),
+         ("RNA", "RNA-seq"),
+@@ -783,16 +805,29 @@
+         ("PROT", "Proteomics"),
+         ("METAB", "Metabolomics"),
+     ]
+-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="samples")
++
++    project = models.ForeignKey(
++        Project,
++        on_delete=models.CASCADE,
++        related_name="samples"
++    )
+     sample_id = models.CharField(max_length=100, unique=True)
++
+     organism = models.ForeignKey(
+-        Organism, on_delete=models.PROTECT, related_name="samples",
+-        null=True, blank=True
++        Organism,
++        on_delete=models.PROTECT,
++        related_name="samples",
++        null=True,
++        blank=True
+     )
+     tissue_type = models.ForeignKey(
+-        TissueType, on_delete=models.PROTECT, related_name="samples",
+-        null=True, blank=True
++        TissueType,
++        on_delete=models.PROTECT,
++        related_name="samples",
++        null=True,
++        blank=True
+     )
++
+     data_type = models.CharField(max_length=10, choices=DATA_TYPES)
+     collected_on = models.DateField(null=True, blank=True)
+     created_at = models.DateTimeField(default=timezone.now)
+@@ -804,6 +839,7 @@
+ 
+ class OmicsFile(models.Model):
+     """Uploaded omics data files linked to samples."""
++
+     FILE_TYPES = [
+         ("FASTQ", "FASTQ reads"),
+         ("BAM", "Aligned reads"),
+@@ -813,7 +849,12 @@
+         ("META", "Metadata table"),
+         ("OTHER", "Other"),
+     ]
+-    sample = models.ForeignKey(Sample, on_delete=models.CASCADE, related_name="files")
++
++    sample = models.ForeignKey(
++        Sample,
++        on_delete=models.CASCADE,
++        related_name="files"
++    )
+     file_type = models.CharField(max_length=10, choices=FILE_TYPES)
+     file = models.FileField(upload_to="uploads/%Y/%m/%d/")
+     uploaded_at = models.DateTimeField(default=timezone.now)
+@@ -825,10 +866,11 @@
+ 
+ 
+ # ---------------------------------------------------------------
+-# Job and Result Tracking (Bioinformatics Layer)
++# Job and Result Tracking
+ # ---------------------------------------------------------------
+ class OmicsJob(models.Model):
+-    """Tracks processing jobs (e.g. FastQC, alignment, variant calling)."""
++    """Tracks processing jobs such as FastQC, alignment, variant calling."""
++
+     JOB_TYPES = [
+         ("FASTQC", "Quality Control"),
+         ("ALIGN", "Read Alignment"),
+@@ -837,6 +879,7 @@
+         ("ANNOT", "Annotation"),
+         ("CUSTOM", "Custom Script"),
+     ]
++
+     STATUS_CHOICES = [
+         ("pending", "Pending"),
+         ("running", "Running"),
+@@ -844,13 +887,17 @@
+         ("failed", "Failed"),
+     ]
+ 
+-    sample = models.ForeignKey(Sample, on_delete=models.CASCADE, related_name="jobs")
++    sample = models.ForeignKey(
++        Sample,
++        on_delete=models.CASCADE,
++        related_name="jobs"
++    )
+     job_type = models.CharField(max_length=50, choices=JOB_TYPES)
+     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+     started_at = models.DateTimeField(null=True, blank=True)
+     finished_at = models.DateTimeField(null=True, blank=True)
+     log = models.TextField(blank=True)
+-    metadata = models.JSONField(blank=True, null=True, default=dict)  # <--- Added field
++    metadata = models.JSONField(blank=True, null=True, default=dict)
+     output_path = models.CharField(max_length=255, blank=True)
+ 
+     class Meta:
+@@ -862,49 +909,17 @@
+ 
+ class OmicsResult(models.Model):
+     """Stores processed output files or JSON summaries."""
+-    sample = models.ForeignKey(Sample, on_delete=models.CASCADE, related_name="results")
+-    result_type = models.CharField(max_length=50)
+-    file = models.FileField(upload_to="results/")
+-    summary_json = models.JSONField(default=dict, blank=True)
+-    created_at = models.DateTimeField(default=timezone.now)
+ 
+-    class Meta:
+-        ordering = ["-created_at"]
+-
+-    def __str__(self):
+-        return f"{self.sample.sample_id} [{self.result_type}]"
+-
+-
+-# ---------------------------------------------------------------
+-# Sample Drafts (Backend-aware wizard progress)
+-# ---------------------------------------------------------------
+-class SampleDraft(models.Model):
+-    """Stores partial sample entry progress for resuming later."""
+-    project = models.ForeignKey(
+-        Project,
++    sample = models.ForeignKey(
++        Sample,
+         on_delete=models.CASCADE,
+-        related_name="sample_drafts",
+-        help_text="Associated project for this draft entry"
+-    )
+-    user = models.ForeignKey(
+-        settings.AUTH_USER_MODEL,
+-        on_delete=models.SET_NULL,
+-        null=True,
+-        blank=True,
+-        related_name="sample_drafts",
+-        help_text="User who created this draft"
++        related_name="results"
+     )
+-    step = models.PositiveSmallIntegerField(default=1, help_text="Current wizard step")
+-    data = models.JSONField(default=dict, blank=True, help_text="Serialized wizard data")
+-
++    result_type = models.CharField(max_length=50)
++    file = models.FileField(upload_to="results/")
++    summary_json = models.JSONField(default=dict, blank=True)
+     created_at = models.DateTimeField(default=timezone.now)
+-    updated_at = models.DateTimeField(auto_now=True)
+-
+-    class Meta:
+-        ordering = ["-updated_at"]
+ 
+-    def __str__(self):
+-        return f"Draft for {self.project.name} (step {self.step})"
+ 
+ 
+ ### FILE: omics_core/serializers.py
+@@ -1103,9 +1118,8 @@
+ # ===============================================================
+ 
+ import os
+-from datetime import datetime, timezone
++from datetime import datetime
+ from django.http import HttpResponse, FileResponse, Http404
+-from django.utils import timezone as dj_timezone
+ from django.db import models
+ 
+ from rest_framework import viewsets
+@@ -1142,30 +1156,26 @@
+     queryset = Project.objects.all().order_by("-created_at")
+     serializer_class = ProjectSerializer
+ 
++
+ # ---------------------------------------------------------------
+-# Organism API (fixed strict kingdom + search filtering)
++# Organism API with fast search and strict kingdom filter
+ # ---------------------------------------------------------------
+ class OrganismViewSet(viewsets.ModelViewSet):
+     serializer_class = OrganismSerializer
+ 
+     def get_queryset(self):
+-        qs = Organism.objects.all()  # start with full table
++        qs = Organism.objects.all()
+ 
+         kingdom = self.request.query_params.get("kingdom")
+         search = self.request.query_params.get("search")
+ 
+-        # 1. STRICTLY filter by kingdom first
+         if kingdom:
+             qs = qs.filter(kingdom__iexact=kingdom)
+ 
+-        # 2. Then apply search
+         if search:
+-            qs = qs.filter(
+-                models.Q(scientific_name__icontains=search) |
+-                models.Q(common_name__icontains=search)
+-            )
++            q = search.lower().strip()
++            qs = qs.filter(search_name__icontains=q)
+ 
+-        # 3. Clean output
+         return qs.order_by("scientific_name")[:100]
+ 
+ 
+@@ -1173,8 +1183,8 @@
+ # Tissue Type API
+ # ---------------------------------------------------------------
+ class TissueTypeViewSet(viewsets.ModelViewSet):
+-    queryset = TissueType.objects.all().order_by("name")
+     serializer_class = TissueTypeSerializer
++    queryset = TissueType.objects.all().order_by("name")
+ 
+     def get_queryset(self):
+         qs = super().get_queryset()
+@@ -1188,37 +1198,39 @@
+ # Sample API
+ # ---------------------------------------------------------------
+ class SampleViewSet(viewsets.ModelViewSet):
+-    queryset = Sample.objects.select_related("project", "organism", "tissue_type").all()
+     serializer_class = SampleSerializer
++    queryset = Sample.objects.select_related(
++        "project", "organism", "tissue_type"
++    ).all()
+ 
+     @action(detail=True, methods=["get"], url_path="fastqc")
+     def latest_fastqc(self, request, pk=None):
+         sample = self.get_object()
+ 
+-        latest_html = OmicsResult.objects.filter(
++        html_res = OmicsResult.objects.filter(
+             sample=sample, result_type="FASTQC_HTML"
+         ).order_by("-id").first()
+ 
+-        latest_zip = OmicsResult.objects.filter(
++        zip_res = OmicsResult.objects.filter(
+             sample=sample, result_type="FASTQC_ZIP"
+         ).order_by("-id").first()
+ 
+-        if not latest_html and not latest_zip:
++        if not html_res and not zip_res:
+             return Response({"detail": "No FASTQC results found."}, status=404)
+ 
+         return Response({
+             "sample_id": sample.id,
+             "sample_name": sample.sample_id,
+             "html_report": (
+-                f"https://omics.reslab.dev/api/results/{latest_html.id}/html/"
+-                if latest_html else None
++                f"https://omics.reslab.dev/api/results/{html_res.id}/html/"
++                if html_res else None
+             ),
+             "zip_download": (
+-                f"https://omics.reslab.dev/api/results/{latest_zip.id}/download-zip/"
+-                if latest_zip else None
++                f"https://omics.reslab.dev/api/results/{zip_res.id}/download-zip/"
++                if zip_res else None
+             ),
+             "generated_on": (
+-                latest_html.created_at if latest_html else latest_zip.created_at
++                html_res.created_at if html_res else zip_res.created_at
+             ),
+         })
+ 
+@@ -1227,24 +1239,24 @@
+ # Omics File API
+ # ---------------------------------------------------------------
+ class OmicsFileViewSet(viewsets.ModelViewSet):
+-    queryset = OmicsFile.objects.select_related("sample").all()
+     serializer_class = OmicsFileSerializer
++    queryset = OmicsFile.objects.select_related("sample").all()
+ 
+ 
+ # ---------------------------------------------------------------
+ # Job API
+ # ---------------------------------------------------------------
+ class OmicsJobViewSet(viewsets.ModelViewSet):
+-    queryset = OmicsJob.objects.select_related("sample").all()
+     serializer_class = OmicsJobSerializer
++    queryset = OmicsJob.objects.select_related("sample").all()
+ 
+ 
+ # ---------------------------------------------------------------
+ # Result API
+ # ---------------------------------------------------------------
+ class OmicsResultViewSet(viewsets.ModelViewSet):
+-    queryset = OmicsResult.objects.select_related("sample").all()
+     serializer_class = OmicsResultSerializer
++    queryset = OmicsResult.objects.select_related("sample").all()
+ 
+     @action(detail=True, methods=["get"], url_path="html")
+     def html_report(self, request, pk=None):
+@@ -1256,8 +1268,8 @@
+         if not os.path.exists(file_path):
+             raise Http404("File not found")
+ 
+-        with open(file_path, "rb") as fh:
+-            return HttpResponse(fh.read(), content_type="text/html")
++        with open(file_path, "rb") as f:
++            return HttpResponse(f.read(), content_type="text/html")
+ 
+     @action(detail=True, methods=["get"], url_path="download-zip")
+     def download_zip(self, request, pk=None):
+@@ -1276,8 +1288,8 @@
+ # Sample Draft API
+ # ---------------------------------------------------------------
+ class SampleDraftViewSet(viewsets.ModelViewSet):
+-    queryset = SampleDraft.objects.select_related("project", "user").all()
+     serializer_class = SampleDraftSerializer
++    queryset = SampleDraft.objects.select_related("project", "user").all()
+ 
+ 
+ ### FILE: omics_core/tasks.py

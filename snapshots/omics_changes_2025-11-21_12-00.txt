@@ -1,0 +1,284 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-21 12:00:02
+Current: omics_snapshot_2025-11-21_12-00.txt
+Previous: omics_snapshot_2025-11-21_08-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-21_08-00.txt	2025-11-21 08:00:02.628933515 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-21_12-00.txt	2025-11-21 12:00:02.064167990 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-21 08:00:01
++Generated on: 2025-11-21 12:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -321,6 +321,7 @@
+ │   ├── omics_changes_2025-11-20_20-00.txt
+ │   ├── omics_changes_2025-11-21_00-00.txt
+ │   ├── omics_changes_2025-11-21_04-00.txt
++│   ├── omics_changes_2025-11-21_08-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -423,7 +424,9 @@
+ │   ├── omics_snapshot_2025-11-21_00-00.zip
+ │   ├── omics_snapshot_2025-11-21_04-00.txt
+ │   ├── omics_snapshot_2025-11-21_04-00.zip
+-│   └── omics_snapshot_2025-11-21_08-00.txt
++│   ├── omics_snapshot_2025-11-21_08-00.txt
++│   ├── omics_snapshot_2025-11-21_08-00.zip
++│   └── omics_snapshot_2025-11-21_12-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -500,7 +503,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-181 directories, 310 files
++181 directories, 313 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -1563,14 +1566,16 @@
+    Dashboard.jsx
+    ResLab Omics Platform
+    =============================================================================
+-   Responsibilities:
+-   - Fetch and list all projects
+-   - Fetch samples for a selected project
+-   - Display files attached to each sample
+-   - Create new projects
+-   - Upload files to a sample
+-   - Trigger and view FastQC jobs
+-   - Display QC summary and job history
++   Final upgraded version with:
++   - Improved QC logic
++   - Clear QC Completed (no metrics) handling
++   - No QC result yet state
++   - PASS/WARN/FAIL when available
++   - Full job status tracking
++   - Row highlighting
++   - Better upload UI
++   - Auto polling
++   - Dashboard summary metrics
+    ============================================================================= */
+ 
+ import { useEffect, useMemo, useState } from "react";
+@@ -1580,20 +1585,6 @@
+ const API_BASE = "/api";
+ 
+ function Dashboard() {
+-  /*
+-     STATE VARIABLES
+-
+-     projects[]            - full list of projects from API
+-     selectedProject       - project object currently chosen
+-     samples[]             - sample list for selected project
+-     newProjectName        - name entered in form
+-     newProjectDescription - description entered in form
+-     qcInfo                - fastqc summary object
+-     qcMap                 - sampleId -> QC PASS/WARN/FAIL
+-     jobHistory[]          - past QC jobs for sample
+-     uploadingSampleId     - indicates file-upload progress
+-     loading/error         - UI alerts
+-  */
+   const { showToast } = useToast();
+ 
+   const [projects, setProjects] = useState([]);
+@@ -1611,30 +1602,34 @@
+   const [qcInfo, setQcInfo] = useState(null);
+   const [qcLoading, setQcLoading] = useState(false);
+   const [qcMap, setQcMap] = useState({});
++  const [qcMetaMap, setQcMetaMap] = useState({});
+   const [jobHistory, setJobHistory] = useState([]);
+   const [jobHistoryLoading, setJobHistoryLoading] = useState(false);
+ 
+-  // Fetch project list
++  const [jobStatusMap, setJobStatusMap] = useState({});
++
++  /* ---------------------------------------------------------------------- */
++  /* FETCH PROJECTS                                                         */
++  /* ---------------------------------------------------------------------- */
+   const fetchProjects = async () => {
+     setLoading(true);
+     setError("");
+ 
+     try {
+-      const res = await fetch(`${API_BASE}/projects/`, {
+-        credentials: "include",
+-      });
++      const res = await fetch(`${API_BASE}/projects/`, { credentials: "include" });
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+       const data = await res.json();
+       setProjects(data);
+     } catch (e) {
+       setError("Failed to load projects.");
+-      console.error("PROJECT LOAD ERROR:", e);
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
+-  // Fetch samples for one project
++  /* ---------------------------------------------------------------------- */
++  /* FETCH SAMPLES                                                          */
++  /* ---------------------------------------------------------------------- */
+   const fetchSamples = async (projectId) => {
+     if (!projectId) return;
+ 
+@@ -1648,52 +1643,64 @@
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+ 
+       const data = await res.json();
+-      const filtered = data.filter((s) => s.project === projectId);
+-      setSamples(filtered);
++      setSamples(data.filter((s) => s.project === projectId));
+     } catch (e) {
+-      console.error("SAMPLE LOAD ERROR:", e);
+-      setError("Failed to load samples for this project.");
++      setError("Failed to load samples.");
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
+-  // Initial load
+   useEffect(() => {
+     fetchProjects();
+   }, []);
+ 
+-  // Summary statistics
++  /* ---------------------------------------------------------------------- */
++  /* DASHBOARD SUMMARY METRICS                                              */
++  /* ---------------------------------------------------------------------- */
+   const stats = useMemo(() => {
+     const totalProjects = projects.length;
+     const totalSamples = samples.length;
+-    const totalFiles = samples.reduce((sum, s) => {
+-      return sum + (Array.isArray(s.files) ? s.files.length : 0);
+-    }, 0);
+-
+-    return { totalProjects, totalSamples, totalFiles };
+-  }, [projects, samples]);
++    const totalFiles =
++      samples.reduce((sum, s) => sum + (Array.isArray(s.files) ? s.files.length : 0), 0);
+ 
+-  // Select project
++    let passCount = 0;
++    let warnCount = 0;
++    let failCount = 0;
++    let runningJobs = 0;
++
++    samples.forEach((s) => {
++      const qcStatus = qcMap[s.id];
++      if (qcStatus === "PASS") passCount++;
++      else if (qcStatus === "WARN") warnCount++;
++      else if (qcStatus === "FAIL") failCount++;
++
++      if (jobStatusMap[s.id] === "running") runningJobs++;
++    });
++
++    return { totalProjects, totalSamples, totalFiles, passCount, warnCount, failCount, runningJobs };
++  }, [projects, samples, qcMap, jobStatusMap]);
++
++  /* ---------------------------------------------------------------------- */
++  /* SELECT PROJECT                                                         */
++  /* ---------------------------------------------------------------------- */
+   const handleSelectProject = (project) => {
+     setSelectedProject(project);
+     setSamples([]);
+     setQcInfo(null);
+     setQcMap({});
++    setQcMetaMap({});
+     setJobHistory([]);
++    setJobStatusMap({});
+     fetchSamples(project.id);
+   };
+ 
+-  // Create new project
++  /* ---------------------------------------------------------------------- */
++  /* CREATE PROJECT                                                         */
++  /* ---------------------------------------------------------------------- */
+   const handleCreateProject = async (e) => {
+     e.preventDefault();
+-
+-    if (!newProjectName.trim()) {
+-      setError("Project name is required.");
+-      return;
+-    }
+-
+-    setError("");
++    if (!newProjectName.trim()) return setError("Project name is required.");
+ 
+     try {
+       const res = await fetch(`${API_BASE}/projects/`, {
+@@ -1706,25 +1713,25 @@
+         }),
+       });
+ 
+-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
++      if (!res.ok) throw new Error();
+ 
+       setNewProjectName("");
+       setNewProjectDescription("");
+       await fetchProjects();
+       showToast("Project created.", "success");
+-    } catch (e) {
+-      console.error("PROJECT CREATE ERROR:", e);
++    } catch {
+       setError("Failed to create project.");
+     }
+   };
+ 
+-  // Upload file to sample
++  /* ---------------------------------------------------------------------- */
++  /* UPLOAD FILE                                                            */
++  /* ---------------------------------------------------------------------- */
+   const handleUploadFile = async (e, sampleId, fileType) => {
+     const file = e.target.files[0];
+-    if (!file || !selectedProject) return;
++    if (!file) return;
+ 
+     setUploadingSampleId(sampleId);
+-    setError("");
+ 
+     try {
+       const formData = new FormData();
+@@ -1738,13 +1745,11 @@
+         body: formData,
+       });
+ 
+-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
++      if (!res.ok) throw new Error();
+ 
+       await fetchSamples(selectedProject.id);
+       showToast("File uploaded.", "success");
+-    } catch (e) {
+-      console.error("FILE UPLOAD ERROR:", e);
+-      setError("Failed to upload file.");
++    } catch {
+       showToast("File upload failed.", "error");
+     } finally {
+       setUploadingSampleId(null);
+@@ -1752,13 +1757,11 @@
+     }
+   };
+ 
+-  // Trigger FASTQC job
+-  const handleRunFastqc = async (sampleId) => {
+-    try {
+-      const createPayload = {
+-        sample: sampleId,
+-        job_type: "FASTQC",
+-        status: "pending",
++  /* ---------------------------------------------------------------------- */
++  /* RUN FASTQC                                                             */
++  /* ---------------------------------------------------------------------- */
++  const handleRunFastqc = async (sample) => {
++    const sampleId = sample.id;
+ 
+ 
+ ### FILE: frontend/src/pages/Wizard.jsx

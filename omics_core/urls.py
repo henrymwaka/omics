@@ -9,6 +9,7 @@ from rest_framework.routers import DefaultRouter
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework.permissions import AllowAny
+
 from . import views
 from .models import OmicsJob
 
@@ -22,6 +23,8 @@ router.register(r"files", views.OmicsFileViewSet, basename="file")
 router.register(r"sample-drafts", views.SampleDraftViewSet, basename="sample-draft")
 router.register(r"jobs", views.OmicsJobViewSet, basename="omics-job")
 router.register(r"results", views.OmicsResultViewSet, basename="omics-result")
+router.register(r"organisms", views.OrganismViewSet, basename="organism")
+router.register(r"tissues", views.TissueTypeViewSet, basename="tissue")
 
 # ===============================================================
 # OPENAPI / SWAGGER CONFIGURATION
@@ -44,20 +47,14 @@ schema_view = get_schema_view(
 # URL PATTERNS
 # ===============================================================
 urlpatterns = [
-    # ---------------------------------------------------------------
-    # MAIN API ROUTES (CRUD + Custom Actions)
-    # ---------------------------------------------------------------
+    # Main API routes
     path("", include(router.urls)),
 
-    # ---------------------------------------------------------------
-    # API DOCUMENTATION (Swagger and ReDoc)
-    # ---------------------------------------------------------------
+    # API documentation
     path("docs/", schema_view.with_ui("swagger", cache_timeout=0), name="swagger-docs"),
     path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="redoc-docs"),
 
-    # ---------------------------------------------------------------
-    # JOB DETAIL VIEW (HTML log stream)
-    # ---------------------------------------------------------------
+    # Job detail HTML view
     path(
         "jobs/<int:job_id>/",
         lambda request, job_id: render(

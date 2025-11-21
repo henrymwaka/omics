@@ -1,0 +1,95 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-17 04:00:02
+Current: omics_snapshot_2025-11-17_04-00.txt
+Previous: omics_snapshot_2025-11-17_00-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-17_00-00.txt	2025-11-17 00:00:02.409699153 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-17_04-00.txt	2025-11-17 04:00:02.458758924 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-17 00:00:01
++Generated on: 2025-11-17 04:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -289,6 +289,7 @@
+ │   ├── omics_changes_2025-11-16_12-00.txt
+ │   ├── omics_changes_2025-11-16_16-00.txt
+ │   ├── omics_changes_2025-11-16_20-00.txt
++│   ├── omics_changes_2025-11-17_00-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -341,7 +342,9 @@
+ │   ├── omics_snapshot_2025-11-16_16-00.zip
+ │   ├── omics_snapshot_2025-11-16_20-00.txt
+ │   ├── omics_snapshot_2025-11-16_20-00.zip
+-│   └── omics_snapshot_2025-11-17_00-00.txt
++│   ├── omics_snapshot_2025-11-17_00-00.txt
++│   ├── omics_snapshot_2025-11-17_00-00.zip
++│   └── omics_snapshot_2025-11-17_04-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -415,7 +418,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-179 directories, 227 files
++179 directories, 230 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -1644,7 +1647,9 @@
+     setError("");
+ 
+     try {
+-      const res = await fetch(`${API_BASE}/projects/`);
++      const res = await fetch(`${API_BASE}/projects/`, {
++        credentials: "include",
++      });
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+       const data = await res.json();
+       setProjects(data);
+@@ -1666,7 +1671,9 @@
+     setError("");
+ 
+     try {
+-      const res = await fetch(`${API_BASE}/samples/?project=${projectId}`);
++      const res = await fetch(`${API_BASE}/samples/?project=${projectId}`, {
++        credentials: "include",
++      });
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+ 
+       const data = await res.json();
+@@ -1725,6 +1732,7 @@
+     try {
+       const res = await fetch(`${API_BASE}/projects/`, {
+         method: "POST",
++        credentials: "include",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({
+           name: newProjectName.trim(),
+@@ -1758,6 +1766,7 @@
+ 
+       const res = await fetch(`${API_BASE}/files/`, {
+         method: "POST",
++        credentials: "include",
+         body: formData,
+       });
+ 
+@@ -1795,12 +1804,6 @@
+         </div>
+         <div className="dash-summary-card">
+           <span className="dash-summary-label">Files in view</span>
+-          <span className="dash-summary-value">{stats.totalFiles}</span>
+-        </div>
+-      </section>
+-
+-      {/* Two-column layout */}
+-      <section className="dash-columns">
+ 
+ 
+ ### FILE: frontend/src/pages/Wizard.jsx

@@ -1,0 +1,68 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-15 00:00:02
+Current: omics_snapshot_2025-11-15_00-00.txt
+Previous: omics_snapshot_2025-11-14_20-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-14_20-00.txt	2025-11-14 20:00:01.699647285 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-15_00-00.txt	2025-11-15 00:00:02.126005434 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-14 20:00:01
++Generated on: 2025-11-15 00:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -46,6 +46,7 @@
+ ├── bash
+ ├── celerybeat-schedule
+ ├── db_backup_before_fix.sqlite3 -> /mnt/data/omics/db/db_backup_before_fix.sqlite3
++├── db_backup_before_taxonomy_fix.sqlite3
+ ├── db.sqlite3 -> /mnt/data/omics/db/db.sqlite3
+ ├── docs
+ │   ├── API_README.api
+@@ -201,6 +202,7 @@
+ ├── generate_project_snapshot_git.sh
+ ├── generate_project_snapshot.sh
+ ├── generate_project_snapshot_track.sh
++├── import_taxonomy.py
+ ├── LICENSE
+ ├── manage.py
+ ├── media -> /mnt/data/omics/media
+@@ -226,6 +228,7 @@
+ ├── omics_core
+ │   ├── admin.py
+ │   ├── apps.py
++│   ├── auth.py
+ │   ├── forms.py
+ │   ├── __init__.py
+ │   ├── management
+@@ -269,6 +272,7 @@
+ │   ├── omics_changes_2025-11-14_08-00.txt
+ │   ├── omics_changes_2025-11-14_12-00.txt
+ │   ├── omics_changes_2025-11-14_16-00.txt
++│   ├── omics_changes_2025-11-14_20-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -295,7 +299,9 @@
+ │   ├── omics_snapshot_2025-11-14_12-00.zip
+ │   ├── omics_snapshot_2025-11-14_16-00.txt
+ │   ├── omics_snapshot_2025-11-14_16-00.zip
+-│   └── omics_snapshot_2025-11-14_20-00.txt
++│   ├── omics_snapshot_2025-11-14_20-00.txt
++│   ├── omics_snapshot_2025-11-14_20-00.zip
++│   └── omics_snapshot_2025-11-15_00-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -374,7 +380,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-179 directories, 186 files
++179 directories, 192 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12

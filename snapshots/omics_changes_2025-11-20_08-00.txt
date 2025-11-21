@@ -1,0 +1,63 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-20 08:00:02
+Current: omics_snapshot_2025-11-20_08-00.txt
+Previous: omics_snapshot_2025-11-20_04-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-20_04-00.txt	2025-11-20 04:00:01.800385508 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-20_08-00.txt	2025-11-20 08:00:02.259135490 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-20 04:00:01
++Generated on: 2025-11-20 08:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -315,6 +315,7 @@
+ │   ├── omics_changes_2025-11-19_16-00.txt
+ │   ├── omics_changes_2025-11-19_20-00.txt
+ │   ├── omics_changes_2025-11-20_00-00.txt
++│   ├── omics_changes_2025-11-20_04-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -405,7 +406,9 @@
+ │   ├── omics_snapshot_2025-11-19_20-00.zip
+ │   ├── omics_snapshot_2025-11-20_00-00.txt
+ │   ├── omics_snapshot_2025-11-20_00-00.zip
+-│   └── omics_snapshot_2025-11-20_04-00.txt
++│   ├── omics_snapshot_2025-11-20_04-00.txt
++│   ├── omics_snapshot_2025-11-20_04-00.zip
++│   └── omics_snapshot_2025-11-20_08-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -482,7 +485,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-181 directories, 292 files
++181 directories, 295 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -524,7 +527,7 @@
+ """
+ ResLab Omics Platform - Unified Django Settings
+ Production ready settings for omics.reslab.dev
+-Deployed under Nginx + Gunicorn + Cloudflare.
++	Deployed under Nginx + Gunicorn + Cloudflare.
+ """
+ 
+ from pathlib import Path
+@@ -657,8 +660,8 @@
+     BASE_DIR / "frontend" / "dist",
+ ]
+ 
++MEDIA_ROOT = "/home/shaykins/Projects/omics/media"
+ MEDIA_URL = "/media/"
+-MEDIA_ROOT = "/mnt/data/omics/media"
+ 
+ # ---------------------------------------------------------------------
+ # REST FRAMEWORK CONFIGURATION

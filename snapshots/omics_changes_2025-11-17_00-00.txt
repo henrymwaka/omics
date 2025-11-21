@@ -1,0 +1,123 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-17 00:00:02
+Current: omics_snapshot_2025-11-17_00-00.txt
+Previous: omics_snapshot_2025-11-16_20-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-16_20-00.txt	2025-11-16 20:00:02.050693340 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-17_00-00.txt	2025-11-17 00:00:02.409699153 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-16 20:00:01
++Generated on: 2025-11-17 00:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -288,6 +288,7 @@
+ │   ├── omics_changes_2025-11-16_08-00.txt
+ │   ├── omics_changes_2025-11-16_12-00.txt
+ │   ├── omics_changes_2025-11-16_16-00.txt
++│   ├── omics_changes_2025-11-16_20-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -338,7 +339,9 @@
+ │   ├── omics_snapshot_2025-11-16_12-00.zip
+ │   ├── omics_snapshot_2025-11-16_16-00.txt
+ │   ├── omics_snapshot_2025-11-16_16-00.zip
+-│   └── omics_snapshot_2025-11-16_20-00.txt
++│   ├── omics_snapshot_2025-11-16_20-00.txt
++│   ├── omics_snapshot_2025-11-16_20-00.zip
++│   └── omics_snapshot_2025-11-17_00-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -412,7 +415,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-179 directories, 224 files
++179 directories, 227 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -2007,33 +2010,51 @@
+ ### FILE: frontend/src/pages/Home.jsx
+ -----------------------------------
+ // src/pages/Home.jsx
+-// -----------------------------------------------------------------------------
+-// Home Page
+-// -----------------------------------------------------------------------------
+-// The Home page is intentionally minimal and focuses on two components:
+-//
+-//   1. HeroSection  → Top banner with message, background image, CTA etc.
+-//   2. Footer       → Global footer for branding and attribution
+-//
+-// All navigation, layout structure, and page chrome are handled by
+-// GlobalLayout in App.jsx. This file only provides the content segment.
+-//
+-// The goal is to keep Home.jsx lightweight so it renders instantly.
+-// -----------------------------------------------------------------------------
+-
+ import HeroSection from "../components/HeroSection";
+ import Footer from "../components/Footer";
+ import "../App.css";
+ 
+ function Home() {
+   return (
+-    <>
+-      {/* Main landing hero */}
++    <div className="landing-page">
+       <HeroSection />
+ 
+-      {/* Footer always placed at bottom within the GlobalLayout wrapper */}
++      {/* About Section */}
++      <section id="about-section" className="about-section fade-in">
++        <div className="about-content">
++          <h2>About the Platform</h2>
++
++          <p>
++            The ResLab Omics Platform integrates multiple bioinformatics workflows into
++            a single streamlined environment. It supports scientists working in agriculture,
++            biotechnology, and environmental genomics.
++          </p>
++
++          <p>
++            Built for interoperability with SmartField Dashboard and LIMS-GT, the platform
++            ensures seamless flow of data from field experiments to molecular analysis.
++          </p>
++
++          <ul>
++            <li>Genomics, transcriptomics, and proteomics support</li>
++            <li>Automated pipelines with progress tracking</li>
++            <li>Interactive visualization tools</li>
++            <li>Secure multi-user access</li>
++          </ul>
++        </div>
++      </section>
++
++      {/* Data to Discovery */}
++      <section className="preview-section fade-in">
++        <h2>Data to Discovery</h2>
++        <p>
++          Move from raw FASTQ reads to biological interpretation with interactive visual
++          tools, full experiment tracking, and exportable structured reports.
++        </p>
++      </section>
++
+       <Footer />
+-    </>
++    </div>
+   );
+ }
+ 
+@@ -2047,7 +2068,7 @@
+ import ReactDOM from "react-dom/client";
+ import App from "./App";
+ import "./App.css";
+-import "./styles/theme_modern.css";
++//import "./styles/theme_modern.css";
+ // To try others later:
+ // import "./styles/theme_classic.css";
+ // import "./styles/theme_minimal.css";

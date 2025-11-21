@@ -1,11 +1,11 @@
 """
-ResLab Omics Platform — Unified Django Settings
-================================================
+ResLab Omics Platform - Unified Django Settings
 Production-ready settings for omics.reslab.dev
 Deployed under Nginx + Gunicorn + Cloudflare.
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 # ---------------------------------------------------------------------
 # BASE PATHS
@@ -17,8 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ---------------------------------------------------------------------
 SECRET_KEY = "django-insecure-aisbjh0#dngj#zn66rpl90mys+fr1!xy%8xk72ur9gggbslz=w"
 
-# Use DEBUG=True only during development
-DEBUG = True
+DEBUG = True  # change to False in production
 
 ALLOWED_HOSTS = [
     "omics.reslab.dev",
@@ -38,11 +37,14 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
+    # Tools
     "django_celery_beat",
     "django_extensions",
 
     # Third-party
     "rest_framework",
+    "rest_framework_simplejwt",
     "drf_yasg",
 
     # Local apps
@@ -78,7 +80,9 @@ WSGI_APPLICATION = "omics.wsgi.application"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
+        "DIRS": [
+            BASE_DIR / "frontend" / "dist",
+        ],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -92,7 +96,7 @@ TEMPLATES = [
 ]
 
 # ---------------------------------------------------------------------
-# DATABASE (moved to /mnt/data/omics/db)
+# DATABASE
 # ---------------------------------------------------------------------
 DATABASES = {
     "default": {
@@ -120,28 +124,27 @@ USE_I18N = True
 USE_TZ = True
 
 # ---------------------------------------------------------------------
-# STATIC & MEDIA (moved to /mnt/data/omics/)
+# STATIC AND MEDIA
 # ---------------------------------------------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = "/mnt/data/omics/static"
 
 STATICFILES_DIRS = [
-    BASE_DIR / "frontend/dist",
+    BASE_DIR / "frontend" / "dist",
 ]
 
+MEDIA_ROOT = "/home/shaykins/Projects/omics/media"
 MEDIA_URL = "/media/"
-MEDIA_ROOT = "/mnt/data/omics/media"
 
 # ---------------------------------------------------------------------
-# REST FRAMEWORK CONFIGURATION
+# REST FRAMEWORK (JWT Cookie Authentication)
 # ---------------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
+        "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
-        "rest_framework.authentication.BasicAuthentication",
+        "users.auth.CookieJWTAuthentication",
     ],
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
@@ -150,14 +153,40 @@ REST_FRAMEWORK = {
 }
 
 # ---------------------------------------------------------------------
-# SECURITY / HEADERS
+# SIMPLE JWT
+# ---------------------------------------------------------------------
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "ALGORITHM": "HS256",
+}
+
+# Auth cookie names
+AUTH_COOKIE = "access_token"
+AUTH_COOKIE_REFRESH = "refresh_token"
+
+# Cookie flags
+AUTH_COOKIE_SECURE = True
+AUTH_COOKIE_HTTP_ONLY = True
+AUTH_COOKIE_SAMESITE = "Lax"
+
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SAMESITE = "Lax"
+
+# ---------------------------------------------------------------------
+# SECURITY AND HEADERS
 # ---------------------------------------------------------------------
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = "DENY"
 
 # ---------------------------------------------------------------------
-# PROXY / HTTPS AWARENESS (Cloudflare)
+# PROXY AWARENESS (Cloudflare)
 # ---------------------------------------------------------------------
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
@@ -167,12 +196,12 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # ---------------------------------------------------------------------
-# DEFAULTS
+# DEFAULT SETTINGS
 # ---------------------------------------------------------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ---------------------------------------------------------------------
-# Celery Configuration
+# CELERY CONFIGURATION
 # ---------------------------------------------------------------------
 CELERY_BROKER_URL = "redis://localhost:6379/0"
 CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
@@ -182,6 +211,19 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Africa/Kampala"
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_ACKS_LATE = True
+
+# ---------------------------------------------------------------------
+# CELERY BEAT SCHEDULE (SOFT DELETE PURGE)
+# ---------------------------------------------------------------------
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    "purge_soft_deleted_daily": {
+        "task": "omics_core.tasks.cleanup_soft_deleted.purge_soft_deleted",
+        "schedule": crontab(minute=0, hour=2),  # run daily at 02:00
+    },
+}
+
 # ---------------------------------------------------------------------
 # LOGGING CONFIGURATION
 # ---------------------------------------------------------------------

@@ -1,0 +1,232 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-19 12:00:02
+Current: omics_snapshot_2025-11-19_12-00.txt
+Previous: omics_snapshot_2025-11-19_08-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-19_08-00.txt	2025-11-19 08:00:02.189370677 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-19_12-00.txt	2025-11-19 12:00:02.611070976 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-19 08:00:01
++Generated on: 2025-11-19 12:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -234,6 +234,7 @@
+ │   ├── admin.py
+ │   ├── apps.py
+ │   ├── auth.py
++│   ├── csrf_views
+ │   ├── forms.py
+ │   ├── __init__.py
+ │   ├── management
+@@ -309,6 +310,7 @@
+ │   ├── omics_changes_2025-11-18_20-00.txt
+ │   ├── omics_changes_2025-11-19_00-00.txt
+ │   ├── omics_changes_2025-11-19_04-00.txt
++│   ├── omics_changes_2025-11-19_08-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -389,7 +391,9 @@
+ │   ├── omics_snapshot_2025-11-19_00-00.zip
+ │   ├── omics_snapshot_2025-11-19_04-00.txt
+ │   ├── omics_snapshot_2025-11-19_04-00.zip
+-│   └── omics_snapshot_2025-11-19_08-00.txt
++│   ├── omics_snapshot_2025-11-19_08-00.txt
++│   ├── omics_snapshot_2025-11-19_08-00.zip
++│   └── omics_snapshot_2025-11-19_12-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -466,7 +470,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-181 directories, 276 files
++181 directories, 280 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -524,7 +528,6 @@
+ # ---------------------------------------------------------------------
+ SECRET_KEY = "django-insecure-aisbjh0#dngj#zn66rpl90mys+fr1!xy%8xk72ur9gggbslz=w"
+ 
+-# Use DEBUG=True only during development
+ DEBUG = True
+ 
+ ALLOWED_HOSTS = [
+@@ -538,7 +541,6 @@
+ # APPLICATIONS
+ # ---------------------------------------------------------------------
+ INSTALLED_APPS = [
+-    # Django core apps
+     "django.contrib.admin",
+     "django.contrib.auth",
+     "django.contrib.contenttypes",
+@@ -546,14 +548,13 @@
+     "django.contrib.messages",
+     "django.contrib.staticfiles",
+ 
+-    # Scheduling and dev tools
+-    "django_celery_beat",
+-    "django_extensions",
+-
+     # Third-party
+     "rest_framework",
+     "rest_framework_simplejwt",
+     "drf_yasg",
++    "django_celery_beat",
++    "django_extensions",
++    "corsheaders",
+ 
+     # Local apps
+     "omics_core",
+@@ -567,6 +568,7 @@
+ # MIDDLEWARE
+ # ---------------------------------------------------------------------
+ MIDDLEWARE = [
++    "corsheaders.middleware.CorsMiddleware",           # must be first
+     "django.middleware.security.SecurityMiddleware",
+     "django.contrib.sessions.middleware.SessionMiddleware",
+     "django.middleware.common.CommonMiddleware",
+@@ -604,7 +606,7 @@
+ ]
+ 
+ # ---------------------------------------------------------------------
+-# DATABASE (moved to /mnt/data/omics/db)
++# DATABASE (stored on /mnt/data)
+ # ---------------------------------------------------------------------
+ DATABASES = {
+     "default": {
+@@ -632,7 +634,7 @@
+ USE_TZ = True
+ 
+ # ---------------------------------------------------------------------
+-# STATIC & MEDIA (moved to /mnt/data/omics/)
++# STATIC & MEDIA CONFIGURATION
+ # ---------------------------------------------------------------------
+ STATIC_URL = "/static/"
+ STATIC_ROOT = "/mnt/data/omics/static"
+@@ -645,7 +647,7 @@
+ MEDIA_ROOT = "/mnt/data/omics/media"
+ 
+ # ---------------------------------------------------------------------
+-# REST FRAMEWORK CONFIGURATION
++# REST FRAMEWORK
+ # ---------------------------------------------------------------------
+ REST_FRAMEWORK = {
+     "DEFAULT_PERMISSION_CLASSES": [
+@@ -674,37 +676,39 @@
+     "ALGORITHM": "HS256",
+ }
+ 
+-# Cookies that hold the JWT tokens
+-AUTH_COOKIE = "access_token"          # name of access token cookie
+-AUTH_COOKIE_REFRESH = "refresh_token" # name of refresh token cookie
+-AUTH_COOKIE_SECURE = True            # set to True in production over HTTPS
++AUTH_COOKIE = "access_token"
++AUTH_COOKIE_REFRESH = "refresh_token"
++AUTH_COOKIE_SECURE = True
+ AUTH_COOKIE_HTTP_ONLY = True
+-AUTH_COOKIE_SAMESITE = "Lax"
++AUTH_COOKIE_SAMESITE = "None"
+ 
+ # ---------------------------------------------------------------------
+-# SECURITY / HEADERS
++# CSRF / CORS CONFIG (THE CRITICAL FIX)
+ # ---------------------------------------------------------------------
+-SECURE_CONTENT_TYPE_NOSNIFF = True
+-SECURE_BROWSER_XSS_FILTER = True
+-X_FRAME_OPTIONS = "DENY"
++CSRF_TRUSTED_ORIGINS = [
++    "https://omics.reslab.dev",
++    "https://www.omics.reslab.dev",
++    "https://*.reslab.dev",
++]
+ 
+-# ---------------------------------------------------------------------
+-# PROXY / HTTPS AWARENESS (Cloudflare)
+-# ---------------------------------------------------------------------
+-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
++CSRF_COOKIE_SECURE = True
++SESSION_COOKIE_SECURE = True
++CSRF_COOKIE_HTTPONLY = False            # React must read csrftoken
++SESSION_COOKIE_HTTPONLY = True
++CSRF_COOKIE_SAMESITE = "None"
++SESSION_COOKIE_SAMESITE = "None"
+ 
+-CSRF_TRUSTED_ORIGINS = [
++CORS_ALLOWED_ORIGINS = [
+     "https://omics.reslab.dev",
+     "https://www.omics.reslab.dev",
+ ]
+ 
+-# ---------------------------------------------------------------------
+-# DEFAULTS
+-# ---------------------------------------------------------------------
+-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
++CORS_ALLOW_CREDENTIALS = True
+ 
+ # ---------------------------------------------------------------------
+-# Celery Configuration
++# SECURITY HEADERS
++# ---------------------------------------------------------------------
++SECURE_CONTENT_TYPE_NOSNIFF = True
+ 
+ 
+ ### FILE: omics/urls.py
+@@ -719,6 +723,8 @@
+ from django.views.generic import TemplateView
+ from django.conf import settings
+ from django.conf.urls.static import static
++from omics_core.csrf_views import csrf
++
+ 
+ # JWT views are imported but now used via users.views wrappers
+ from rest_framework_simplejwt.views import (
+@@ -746,6 +752,7 @@
+     # Optional raw JWT endpoints if you ever need them directly
+     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
++    path("api/csrf/", csrf),
+ ]
+ 
+ # ===============================================================
+@@ -1310,7 +1317,7 @@
+ 
+ # ===============================================================
+ # SAMPLE API
+-# Full CRUD, authenticated only
++# Full CRUD, currently open to allow wizard saves without auth
+ # Adds optional project filter:
+ #   GET /api/samples/?project=<project_id>
+ # ===============================================================
+@@ -1319,14 +1326,15 @@
+     Full CRUD for samples.
+ 
+     Security:
+-      - All methods require authentication.
++      - Temporarily open (AllowAny) so the frontend wizard can save
++        while authentication wiring is being completed.
+ 
+     Filters:
+       - project : restrict list by project primary key.
+     """
+ 
+     serializer_class = SampleSerializer
+-    permission_classes = [IsAuthenticated]
++    permission_classes = [AllowAny]
+ 
+     def get_queryset(self):
+         qs = (
+@@ -1379,7 +1387,6 @@
+         # Frontend expects these keys, extra fields can be added later
+         payload = {
+             "sample_id": sample.id,
+-            "sample_name": sample.sample_id,
+ 
+ 
+ ### FILE: omics_core/urls.py

@@ -1,90 +1,123 @@
 # ===============================================================
-# Omics Platform Git Ignore — Django + React (Vite) + Gunicorn
+# ResLab Omics Platform — Django + React + NGS Pipelines
+# Production-grade .gitignore (Safe for GitHub)
 # ===============================================================
 
-# ---- Python / Django ----
+###############################
+# PYTHON / DJANGO
+###############################
 __pycache__/
 *.py[cod]
-*.sqlite3
-*.log
-db.sqlite3
-.env
-.env.*
-.venv/
-venv/
-env/
+*.pyo
+*.pyd
 *.egg-info/
 *.pot
 *.mo
-*.pyproj
-*.sublime-project
-*.sublime-workspace
 
-# ---- Django static & media ----
-/static/
+# Local configs
+.env
+.env.*
+config.json
+config_dev.json
+
+# Django DB files
+db.sqlite3
+*.sqlite3
+*.sqlite3-journal
+
+# Django runtime & migration artifacts
+*.log
+*.pid
+*.sock
+*.tmp
+*.cache
+*.db
+
+###############################
+# DJANGO MEDIA & STATIC (BIG DATA)
+###############################
 /media/
-staticfiles/
+/uploads/
+/static/
+/staticfiles/
+media/
+uploads/
+**/media/**
+**/uploads/**
+
+###############################
+# NGS / OMICS DATA (DO NOT TRACK)
+###############################
+*.fastq
+*.fastq.gz
+*.fq
+*.fq.gz
+*.bam
+*.sam
+*.bai
+*.vcf
+*.vcf.gz
+*.fasta
+*.fa
+*.gz
+*.tar.gz
+*.7z
+*.zip
+
+# QC and workflow outputs
+*.html
 *.pdf
+*.xml
+*.json
 *.csv
 *.xlsx
-*.json
-*.xml
 
-# ---- Frontend / React (Vite) ----
+###############################
+# FRONTEND (VITE / REACT)
+###############################
 frontend/node_modules/
 frontend/dist/
-frontend/.env
 frontend/.cache/
 frontend/.vite/
+frontend/.env
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# ---- OS / Editor / IDE ----
+###############################
+# SYSTEM FILES / EDITORS
+###############################
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 *.bak
 *.swp
-*.tmp
 *~
+*.temp
 
-# ---- Build and deployment artifacts ----
+###############################
+# DEPLOYMENT ARTIFACTS
+###############################
 /run/
-*.sock
-*.pid
-*.pid.lock
-*.db
-*.sql
 *.crt
 *.pem
 *.key
+*.conf
 
-# ---- System backup directories ----
-_backup_*/
+###############################
+# BACKUPS / SYSTEM SNAPSHOTS
+###############################
+backup*/
+bak*/
+_old*/
 __backup__*/
+_backup_*/
 __old__*/
-# NCBI Taxonomy dump files
-new_taxdump.zip
-ncbi_taxdump/
 
-# --- ResLab Omics data exclusions ---
-# Large or generated datasets
-*.zip
-*.tar.gz
-*.bz2
-*.7z
-*.gz
-*.fasta
-*.fastq
-/media/
-/mnt/
-/ncbi_taxdump/
-/new_taxdump.zip
-*.sqlite3
-*.db
-*.bak
-*.log
-*.tmp
-*.cache
+###############################
+# NCBI TAXONOMY DUMP
+###############################
+ncbi_taxdump/
+new_taxdump.zip
+taxdump.tar.gz

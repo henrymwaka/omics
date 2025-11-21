@@ -1,0 +1,309 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-16 12:00:02
+Current: omics_snapshot_2025-11-16_12-00.txt
+Previous: omics_snapshot_2025-11-16_08-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-16_08-00.txt	2025-11-16 08:00:01.922259615 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-16_12-00.txt	2025-11-16 12:00:02.294495980 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-16 08:00:01
++Generated on: 2025-11-16 12:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -283,6 +283,7 @@
+ │   ├── omics_changes_2025-11-15_20-00.txt
+ │   ├── omics_changes_2025-11-16_00-00.txt
+ │   ├── omics_changes_2025-11-16_04-00.txt
++│   ├── omics_changes_2025-11-16_08-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -327,7 +328,9 @@
+ │   ├── omics_snapshot_2025-11-16_00-00.zip
+ │   ├── omics_snapshot_2025-11-16_04-00.txt
+ │   ├── omics_snapshot_2025-11-16_04-00.zip
+-│   └── omics_snapshot_2025-11-16_08-00.txt
++│   ├── omics_snapshot_2025-11-16_08-00.txt
++│   ├── omics_snapshot_2025-11-16_08-00.zip
++│   └── omics_snapshot_2025-11-16_12-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -406,7 +409,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-179 directories, 218 files
++179 directories, 221 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -1580,7 +1583,7 @@
+   "dependencies": {
+     "react": "^19.1.1",
+     "react-dom": "^19.1.1",
+-    "react-router-dom": "^7.9.5"
++    "react-router-dom": "^7.9.6"
+   },
+   "devDependencies": {
+     "@eslint/js": "^9.36.0",
+@@ -1610,36 +1613,35 @@
+ ### FILE: frontend/src/pages/Dashboard.jsx
+ -----------------------------------
+ // src/pages/Dashboard.jsx
+-import { useEffect, useState } from "react";
++import { useEffect, useMemo, useState } from "react";
+ import "../App.css";
+-import DashboardHeader from "../components/dashboard/DashboardHeader";
+-import ProjectList from "../components/dashboard/ProjectList";
+-import ProjectForm from "../components/dashboard/ProjectForm";
+-import SamplePanel from "../components/dashboard/SamplePanel";
++import NavBar from "../components/NavBar";
+ 
+ const API_BASE = "/api";
+ 
+ function Dashboard() {
+-  // ------------------- STATE -------------------
+   const [projects, setProjects] = useState([]);
+   const [selectedProject, setSelectedProject] = useState(null);
+   const [samples, setSamples] = useState([]);
+   const [files, setFiles] = useState({});
+   const [loading, setLoading] = useState(false);
+   const [error, setError] = useState("");
+-  const [uploading, setUploading] = useState(null);
++  const [uploadingSampleId, setUploadingSampleId] = useState(null);
+ 
+   const [newProjectName, setNewProjectName] = useState("");
+   const [newProjectDescription, setNewProjectDescription] = useState("");
+ 
+-  // ------------------- LOADERS -------------------
++  // -------------------------------------------------------------------
++  // Data loaders
++  // -------------------------------------------------------------------
+   const fetchProjects = async () => {
+     setLoading(true);
+     setError("");
+     try {
+       const res = await fetch(`${API_BASE}/projects/`);
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+-      setProjects(await res.json());
++      const data = await res.json();
++      setProjects(data);
+     } catch {
+       setError("Failed to load projects.");
+     } finally {
+@@ -1656,14 +1658,17 @@
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+       const data = await res.json();
+       setSamples(data);
++
+       const fileMap = {};
+       for (const s of data) {
+         const resF = await fetch(`${API_BASE}/files/?sample=${s.id}`);
+-        if (resF.ok) fileMap[s.id] = await resF.json();
++        if (resF.ok) {
++          fileMap[s.id] = await resF.json();
++        }
+       }
+       setFiles(fileMap);
+     } catch {
+-      setError("Failed to load samples.");
++      setError("Failed to load samples for this project.");
+     } finally {
+       setLoading(false);
+     }
+@@ -1673,17 +1678,43 @@
+     fetchProjects();
+   }, []);
+ 
+-  // ------------------- HANDLERS -------------------
++  // -------------------------------------------------------------------
++  // Derived stats
++  // -------------------------------------------------------------------
++  const stats = useMemo(() => {
++    const totalProjects = projects.length;
++    const totalSamples = samples.length;
++    const totalFiles = Object.values(files).reduce(
++      (acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0),
++      0
++    );
++    return { totalProjects, totalSamples, totalFiles };
++  }, [projects, samples, files]);
++
++  // -------------------------------------------------------------------
++  // Handlers
++  // -------------------------------------------------------------------
++  const handleSelectProject = (p) => {
++    setSelectedProject(p);
++    setSamples([]);
++    setFiles({});
++    fetchSamples(p.id);
++  };
++
+   const handleCreateProject = async (e) => {
+     e.preventDefault();
+-    if (!newProjectName.trim()) return setError("Project name is required.");
++    if (!newProjectName.trim()) {
++      setError("Project name is required.");
++      return;
++    }
++    setError("");
+     try {
+       const res = await fetch(`${API_BASE}/projects/`, {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({
+-          name: newProjectName,
+-          description: newProjectDescription,
++          name: newProjectName.trim(),
++          description: newProjectDescription.trim(),
+         }),
+       });
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+@@ -1698,7 +1729,9 @@
+   const handleUploadFile = async (e, sampleId, fileType) => {
+     const file = e.target.files[0];
+     if (!file) return;
+-    setUploading(sampleId);
++    setUploadingSampleId(sampleId);
++    setError("");
++
+     try {
+       const formData = new FormData();
+       formData.append("sample", sampleId);
+@@ -1719,54 +1752,66 @@
+     } catch {
+       setError("Failed to upload file.");
+     } finally {
+-      setUploading(null);
++      setUploadingSampleId(null);
+     }
+   };
+ 
+-  // ------------------- RENDER -------------------
++  // -------------------------------------------------------------------
++  // Render
++  // -------------------------------------------------------------------
+   return (
+-    <div className="app">
+-      <DashboardHeader />
++    <>
++      <NavBar />
+ 
+-      <main className="container">
++      <div className="dash-root">
+         {error && <div className="alert error">{error}</div>}
+         {loading && <div className="alert info">Loading…</div>}
+ 
+-        <section className="grid">
+-          <ProjectList
+-            projects={projects}
+-            selectedProject={selectedProject}
+-            onSelect={(p) => {
+-              setSelectedProject(p);
+-              setFiles({});
+-              fetchSamples(p.id);
+-            }}
+-            onRefresh={fetchProjects}
+-          />
+-
+-          <ProjectForm
+-            name={newProjectName}
+-            description={newProjectDescription}
+-            onNameChange={setNewProjectName}
+-            onDescChange={setNewProjectDescription}
+-            onSubmit={handleCreateProject}
+-          />
++        {/* Top summary strip */}
++        <section className="dash-summary-strip">
++          <div className="dash-summary-card">
++            <span className="dash-summary-label">Projects</span>
++            <span className="dash-summary-value">{stats.totalProjects}</span>
++          </div>
++          <div className="dash-summary-card">
++            <span className="dash-summary-label">Samples in view</span>
++            <span className="dash-summary-value">{stats.totalSamples}</span>
++          </div>
++          <div className="dash-summary-card">
++            <span className="dash-summary-label">Files in view</span>
++            <span className="dash-summary-value">{stats.totalFiles}</span>
++          </div>
+         </section>
+ 
+-        <SamplePanel
+-          project={selectedProject}
+-          samples={samples}
+-          files={files}
+-          uploading={uploading}
+-          onUpload={handleUploadFile}
+-          onReload={fetchSamples}
+-        />
+-      </main>
+-    </div>
+-  );
+-}
+-
+-export default Dashboard;
++        <section className="dash-columns">
++          {/* Left - project list and new project form */}
++          <div className="dash-column-left">
++            <div className="card">
++              <div className="card-header-row">
++                <h2>Projects</h2>
++                <button
++                  type="button"
++                  className="btn small"
++                  onClick={fetchProjects}
++                >
++                  Refresh
++                </button>
++              </div>
++              <ul className="project-list">
++                {projects.map((p) => (
++                  <li
++                    key={p.id}
++                    className={
++                      selectedProject && selectedProject.id === p.id
++                        ? "project-item active"
++                        : "project-item"
++                    }
++                    onClick={() => handleSelectProject(p)}
++                  >
++                    <div className="project-name">{p.name}</div>
++                    {p.description && (
++                      <div className="project-desc">{p.description}</div>
++                    )}
+ 
+ 
+ ### FILE: frontend/src/pages/Wizard.jsx
+@@ -1994,18 +2039,18 @@
+ ### FILE: frontend/src/main.jsx
+ -----------------------------------
+ // src/main.jsx
+-import { StrictMode } from "react";
+-import { createRoot } from "react-dom/client";
+-import App from "./App.jsx";
+-import { ToastProvider } from "./context/ToastContext.jsx";
+-import "./index.css";
++import React from "react";
++import ReactDOM from "react-dom/client";
++import App from "./App";
++import "./App.css";
++import { ToastProvider } from "./context/ToastContext";
+ 
+-createRoot(document.getElementById("root")).render(
+-  <StrictMode>
++ReactDOM.createRoot(document.getElementById("root")).render(
++  <React.StrictMode>
+     <ToastProvider>
+       <App />
+     </ToastProvider>
+-  </StrictMode>
++  </React.StrictMode>
+ );
+ 
+ 

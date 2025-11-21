@@ -1,0 +1,58 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-16 00:00:02
+Current: omics_snapshot_2025-11-16_00-00.txt
+Previous: omics_snapshot_2025-11-15_20-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-15_20-00.txt	2025-11-15 20:00:02.181240258 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-16_00-00.txt	2025-11-16 00:00:02.573315973 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-15 20:00:01
++Generated on: 2025-11-16 00:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -280,6 +280,7 @@
+ │   ├── omics_changes_2025-11-15_08-00.txt
+ │   ├── omics_changes_2025-11-15_12-00.txt
+ │   ├── omics_changes_2025-11-15_16-00.txt
++│   ├── omics_changes_2025-11-15_20-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -318,7 +319,9 @@
+ │   ├── omics_snapshot_2025-11-15_12-00.zip
+ │   ├── omics_snapshot_2025-11-15_16-00.txt
+ │   ├── omics_snapshot_2025-11-15_16-00.zip
+-│   └── omics_snapshot_2025-11-15_20-00.txt
++│   ├── omics_snapshot_2025-11-15_20-00.txt
++│   ├── omics_snapshot_2025-11-15_20-00.zip
++│   └── omics_snapshot_2025-11-16_00-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -397,7 +400,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-179 directories, 209 files
++179 directories, 212 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -943,11 +946,11 @@
+ 
+ # ---------------------- Organism Serializer ---------------------
+ class OrganismSerializer(serializers.ModelSerializer):
+-    """Basic serializer for the Organism model (taxonomy reference)."""
++    db_id = serializers.IntegerField(source="id", read_only=True)
+ 
+     class Meta:
+         model = Organism
+-        fields = ["id", "scientific_name", "common_name", "kingdom", "taxonomy_id"]
++        fields = ["db_id", "scientific_name", "common_name", "kingdom", "taxonomy_id"]
+ 
+ 
+ # ---------------------- Tissue Type Serializer ------------------

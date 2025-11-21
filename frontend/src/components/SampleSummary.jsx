@@ -1,5 +1,13 @@
 // src/components/SampleSummary.jsx
+// -----------------------------------------------------------------------------
+// Unified Sample Summary Component
+// -----------------------------------------------------------------------------
+// Shows sample metadata and linked files.
+// Used in sample detail modal or right-panel preview.
+// -----------------------------------------------------------------------------
+
 import { useEffect, useState } from "react";
+import "../App.css";
 
 function SampleSummary({ sampleId, onClose }) {
   const [sample, setSample] = useState(null);
@@ -8,6 +16,7 @@ function SampleSummary({ sampleId, onClose }) {
 
   useEffect(() => {
     if (!sampleId) return;
+
     setLoading(true);
     fetch(`/api/samples/${sampleId}/`)
       .then((res) => {
@@ -18,14 +27,14 @@ function SampleSummary({ sampleId, onClose }) {
         setSample(data);
         setError("");
       })
-      .catch(() => setError("⚠️ Failed to load sample details."))
+      .catch(() => setError("Failed to load sample details."))
       .finally(() => setLoading(false));
   }, [sampleId]);
 
   if (loading)
     return (
       <div className="card mt-3">
-        <p>🔄 Loading sample summary...</p>
+        <p className="muted">Loading sample summary...</p>
       </div>
     );
 
@@ -45,10 +54,12 @@ function SampleSummary({ sampleId, onClose }) {
 
   return (
     <div className="card mt-3">
-      <div className="flex justify-between items-center mb-2">
+      {/* Header */}
+      <div className="card-header-row">
         <h3 className="font-semibold text-lg">
           🧬 Sample Summary – {sample.sample_id}
         </h3>
+
         {onClose && (
           <button onClick={onClose} className="btn small">
             ✖ Close
@@ -56,36 +67,21 @@ function SampleSummary({ sampleId, onClose }) {
         )}
       </div>
 
+      {/* Summary table */}
       <table className="summary-table">
         <tbody>
-          <tr>
-            <td>Project ID</td>
-            <td>{sample.project}</td>
-          </tr>
-          <tr>
-            <td>Organism</td>
-            <td>{sample.organism_name || "—"}</td>
-          </tr>
-          <tr>
-            <td>Tissue Type</td>
-            <td>{sample.tissue_type_name || "—"}</td>
-          </tr>
-          <tr>
-            <td>Data Type</td>
-            <td>{sample.data_type}</td>
-          </tr>
-          <tr>
-            <td>Collected On</td>
-            <td>{sample.collected_on || "—"}</td>
-          </tr>
-          <tr>
-            <td>Created At</td>
-            <td>{new Date(sample.created_at).toLocaleString()}</td>
-          </tr>
+          <tr><td>Project</td><td>{sample.project}</td></tr>
+          <tr><td>Organism</td><td>{sample.organism_name || "—"}</td></tr>
+          <tr><td>Tissue Type</td><td>{sample.tissue_type_name || "—"}</td></tr>
+          <tr><td>Data Type</td><td>{sample.data_type}</td></tr>
+          <tr><td>Collected On</td><td>{sample.collected_on || "—"}</td></tr>
+          <tr><td>Created At</td><td>{new Date(sample.created_at).toLocaleString()}</td></tr>
         </tbody>
       </table>
 
+      {/* Files */}
       <h4 className="mt-4 font-medium">📁 Linked Files</h4>
+
       {sample.files && sample.files.length > 0 ? (
         <ul className="file-list mt-2">
           {sample.files.map((f) => (
@@ -93,15 +89,15 @@ function SampleSummary({ sampleId, onClose }) {
               <div className="flex justify-between items-center">
                 <span>
                   <strong>{f.file_type}</strong> &nbsp;
-                  <small className="text-gray-600">
+                  <small className="muted">
                     ({new Date(f.uploaded_at).toLocaleString()})
                   </small>
                 </span>
                 <a
                   href={f.file}
+                  className="btn small secondary"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn small secondary"
                 >
                   ⬇ Download
                 </a>
@@ -110,7 +106,7 @@ function SampleSummary({ sampleId, onClose }) {
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-gray-600 mt-2">No linked files.</p>
+        <p className="muted mt-2">No linked files.</p>
       )}
     </div>
   );

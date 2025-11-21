@@ -1,0 +1,378 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-18 12:00:03
+Current: omics_snapshot_2025-11-18_12-00.txt
+Previous: omics_snapshot_2025-11-18_08-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-18_08-00.txt	2025-11-18 08:00:02.127978133 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-18_12-00.txt	2025-11-18 12:00:02.756185774 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-18 08:00:01
++Generated on: 2025-11-18 12:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -302,6 +302,7 @@
+ │   ├── omics_changes_2025-11-17_20-00.txt
+ │   ├── omics_changes_2025-11-18_00-00.txt
+ │   ├── omics_changes_2025-11-18_04-00.txt
++│   ├── omics_changes_2025-11-18_08-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -370,7 +371,9 @@
+ │   ├── omics_snapshot_2025-11-18_00-00.zip
+ │   ├── omics_snapshot_2025-11-18_04-00.txt
+ │   ├── omics_snapshot_2025-11-18_04-00.zip
+-│   └── omics_snapshot_2025-11-18_08-00.txt
++│   ├── omics_snapshot_2025-11-18_08-00.txt
++│   ├── omics_snapshot_2025-11-18_08-00.zip
++│   └── omics_snapshot_2025-11-18_12-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -447,7 +450,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-181 directories, 257 files
++181 directories, 260 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -1171,6 +1174,7 @@
+ from rest_framework import viewsets, permissions
+ from rest_framework.decorators import action
+ from rest_framework.response import Response
++from rest_framework.exceptions import ValidationError
+ 
+ from .models import (
+     Project,
+@@ -1268,32 +1272,78 @@
+ 
+     @action(detail=True, methods=["get"], url_path="fastqc")
+     def latest_fastqc(self, request, pk=None):
++        """
++        Return latest FastQC result and a compact summary, if available.
++        """
+         sample = self.get_object()
+ 
+         html_res = OmicsResult.objects.filter(
+-            sample=sample, result_type="FASTQC_HTML"
++            sample=sample,
++            result_type="FASTQC_HTML",
+         ).order_by("-id").first()
+ 
+         zip_res = OmicsResult.objects.filter(
+-            sample=sample, result_type="FASTQC_ZIP"
++            sample=sample,
++            result_type="FASTQC_ZIP",
+         ).order_by("-id").first()
+ 
+         if not html_res and not zip_res:
+             return Response({"detail": "No FASTQC results found."}, status=404)
+ 
+-        generated = html_res.created_at if html_res else zip_res.created_at
+-
+-        return Response({
+-            "sample_id": sample.id,
+-            "sample_name": sample.sample_id,
+-            "html_report": (
+-                f"/api/results/{html_res.id}/html/" if html_res else None
+-            ),
+-            "zip_download": (
+-                f"/api/results/{zip_res.id}/download-zip/" if zip_res else None
+-            ),
+-            "generated_on": generated,
+-        })
++        # Try to locate latest FASTQC job for this sample
++        job = (
++            OmicsJob.objects.filter(sample=sample, job_type="FASTQC")
++            .order_by("-created_at", "-id")
++            .first()
++        )
++
++        summary = []
++        job_status = None
++        job_id = None
++
++        if job is not None:
++            job_id = job.id
++            job_status = job.status
++            if isinstance(job.metadata, dict):
++                summary = (
++                    job.metadata.get("fastqc", {}).get("summary", [])
++                    or []
++                )
++
++        # Compute overall status from module summary
++        overall = "UNKNOWN"
++        if summary:
++            statuses = {row.get("status") for row in summary}
++            if "FAIL" in statuses:
++                overall = "FAIL"
++            elif "WARN" in statuses:
++                overall = "WARN"
++            elif "PASS" in statuses:
++                overall = "PASS"
++
++        generated = (
++            html_res.created_at if html_res else zip_res.created_at
++        )
++
++        return Response(
++            {
++                "sample_id": sample.id,
++                "sample_name": sample.sample_id,
++                "job_id": job_id,
++                "job_status": job_status,
++                "overall_status": overall,
++                "summary": summary,
++                "html_report": (
++                    f"/api/results/{html_res.id}/html/" if html_res else None
++                ),
++                "zip_download": (
++                    f"/api/results/{zip_res.id}/download-zip/"
++                    if zip_res
++                    else None
++                ),
++                "generated_on": generated,
++            }
++        )
+ 
+ 
+ # ===============================================================
+@@ -1314,53 +1364,6 @@
+ # Job API
+ # Handles job creation and Celery triggering.
+ # ===============================================================
+-class OmicsJobViewSet(viewsets.ModelViewSet):
+-    serializer_class = OmicsJobSerializer
+-    queryset = OmicsJob.objects.select_related("sample").all()
+-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+-
+-    def perform_create(self, serializer):
+-        job = serializer.save(status="pending")
+-
+-        if job.job_type == "FASTQC":
+-            run_fastqc.delay(job.id)
+-
+-
+-# ===============================================================
+-# Result API
+-# ===============================================================
+-class OmicsResultViewSet(viewsets.ModelViewSet):
+-    serializer_class = OmicsResultSerializer
+-    queryset = OmicsResult.objects.select_related("sample").all()
+-    permission_classes = [permissions.AllowAny]
+-
+-    @action(detail=True, methods=["get"], url_path="html")
+-    def html_report(self, request, pk=None):
+-        result = self.get_object()
+-
+-        if result.result_type != "FASTQC_HTML" or not result.file:
+-            return Response({"detail": "Not a FASTQC HTML report."}, status=400)
+-
+-        if not os.path.exists(result.file.path):
+-            raise Http404("File not found")
+-
+-        with open(result.file.path, "rb") as f:
+-            return HttpResponse(f.read(), content_type="text/html")
+-
+-    @action(detail=True, methods=["get"], url_path="download-zip")
+-    def download_zip(self, request, pk=None):
+-        result = self.get_object()
+-
+-        if result.result_type != "FASTQC_ZIP" or not result.file:
+-            return Response({"detail": "Not a FASTQC ZIP."}, status=400)
+-
+-        if not os.path.exists(result.file.path):
+-            raise Http404("File not found")
+-
+-        return FileResponse(open(result.file.path, "rb"), as_attachment=True)
+-
+-
+-# ===============================================================
+ 
+ 
+ ### FILE: omics_core/urls.py
+@@ -1520,13 +1523,12 @@
+ // - Show per-project files using nested `files` from the API
+ // - Allow creating new projects
+ // - Allow uploading FASTQ files per sample
+-//
+-// Uses design tokens and layout classes defined in App.css.
+-// Authentication is handled globally (Cookie-based JWT + ProtectedRoute).
++// - Allow launching and inspecting FastQC jobs
+ // -----------------------------------------------------------------------------
+ 
+ import { useEffect, useMemo, useState } from "react";
+ import "../App.css";
++import { useToast } from "../context/ToastContext";
+ 
+ const API_BASE = "/api";
+ 
+@@ -1534,6 +1536,8 @@
+   // ---------------------------------------------------------------------------
+   // State
+   // ---------------------------------------------------------------------------
++  const { showToast } = useToast();
++
+   const [projects, setProjects] = useState([]);
+   const [selectedProject, setSelectedProject] = useState(null);
+ 
+@@ -1545,6 +1549,14 @@
+   const [newProjectName, setNewProjectName] = useState("");
+   const [newProjectDescription, setNewProjectDescription] = useState("");
+ 
++  // QC related state
++  const [qcInfo, setQcInfo] = useState(null); // currently viewed QC panel
++  const [qcLoading, setQcLoading] = useState(false);
++  const [qcMap, setQcMap] = useState({}); // sample_id -> overall_status
++
++  const [jobHistory, setJobHistory] = useState([]);
++  const [jobHistoryLoading, setJobHistoryLoading] = useState(false);
++
+   // ---------------------------------------------------------------------------
+   // Load all projects
+   // ---------------------------------------------------------------------------
+@@ -1553,13 +1565,12 @@
+     setError("");
+ 
+     try {
+-      const res = await fetch(`${API_BASE}/projects/`, {
+-        credentials: "include",
+-      });
++      const res = await fetch(`${API_BASE}/projects/`);
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+       const data = await res.json();
+       setProjects(data);
+-    } catch {
++    } catch (e) {
++      console.error(e);
+       setError("Failed to load projects.");
+     } finally {
+       setLoading(false);
+@@ -1567,8 +1578,7 @@
+   };
+ 
+   // ---------------------------------------------------------------------------
+-  // Load samples from API, then filter by project on the client
+-  // (current backend ignores ?project= query parameter).
++  // Load samples from API, then filter by project on the server
+   // ---------------------------------------------------------------------------
+   const fetchSamples = async (projectId) => {
+     if (!projectId) return;
+@@ -1577,17 +1587,16 @@
+     setError("");
+ 
+     try {
+-      const res = await fetch(`${API_BASE}/samples/?project=${projectId}`, {
+-        credentials: "include",
+-      });
++      const res = await fetch(`${API_BASE}/samples/?project=${projectId}`);
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+ 
+       const data = await res.json();
+ 
+-      // Defensive filter: only keep samples whose `project` matches
++      // Defensive filter
+       const filtered = data.filter((s) => s.project === projectId);
+       setSamples(filtered);
+-    } catch {
++    } catch (e) {
++      console.error(e);
+       setError("Failed to load samples for this project.");
+     } finally {
+       setLoading(false);
+@@ -1621,6 +1630,8 @@
+   const handleSelectProject = (project) => {
+     setSelectedProject(project);
+     setSamples([]);
++    setQcInfo(null);
++    setQcMap({});
+     fetchSamples(project.id);
+   };
+ 
+@@ -1638,7 +1649,6 @@
+     try {
+       const res = await fetch(`${API_BASE}/projects/`, {
+         method: "POST",
+-        credentials: "include",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({
+           name: newProjectName.trim(),
+@@ -1651,7 +1661,9 @@
+       setNewProjectName("");
+       setNewProjectDescription("");
+       await fetchProjects();
+-    } catch {
++      showToast("Project created.", "success");
++    } catch (e) {
++      console.error(e);
+       setError("Failed to create project.");
+     }
+   };
+@@ -1672,44 +1684,35 @@
+ 
+       const res = await fetch(`${API_BASE}/files/`, {
+         method: "POST",
+-        credentials: "include",
+         body: formData,
+       });
+ 
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+ 
+-      // Reload samples for the active project so nested `files` stay in sync
+       await fetchSamples(selectedProject.id);
+-    } catch {
++      showToast("File uploaded.", "success");
++    } catch (e) {
++      console.error(e);
+       setError("Failed to upload file.");
++      showToast("File upload failed.", "error");
+     } finally {
+       setUploadingSampleId(null);
+-      // reset input so the same file can be chosen again if needed
+       e.target.value = "";
+     }
+   };
+ 
+-  // ---------------------------------------------------------------------------
+-  // Render
+-  // ---------------------------------------------------------------------------
+-  return (
+-    <div className="dash-root">
+-      {/* Notifications */}
+-      {error && <div className="alert error">{error}</div>}
+-      {loading && <div className="alert info">Loading…</div>}
+-
+-      {/* Summary strip */}
+-      <section className="dash-summary-strip">
+-        <div className="dash-summary-card">
+-          <span className="dash-summary-label">Projects</span>
+-          <span className="dash-summary-value">{stats.totalProjects}</span>
+-        </div>
+-        <div className="dash-summary-card">
+-          <span className="dash-summary-label">Samples in view</span>
+-          <span className="dash-summary-value">{stats.totalSamples}</span>
+-        </div>
+-        <div className="dash-summary-card">
+-          <span className="dash-summary-label">Files in view</span>
++  // Run FastQC job for a sample
++  const handleRunFastqc = async (sampleId) => {
++    try {
++      const payload = {
++        sample: sampleId,
++        job_type: "FASTQC",
++        status: "pending",
++      };
++
++      const res = await fetch(`${API_BASE}/jobs/`, {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
+ 
+ 
+ ### FILE: frontend/src/pages/Wizard.jsx

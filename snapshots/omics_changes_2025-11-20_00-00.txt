@@ -1,0 +1,44 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-20 00:00:03
+Current: omics_snapshot_2025-11-20_00-00.txt
+Previous: omics_snapshot_2025-11-19_20-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-19_20-00.txt	2025-11-19 20:00:02.217222912 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-20_00-00.txt	2025-11-20 00:00:02.686053852 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-19 20:00:01
++Generated on: 2025-11-20 00:00:02
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -313,6 +313,7 @@
+ │   ├── omics_changes_2025-11-19_08-00.txt
+ │   ├── omics_changes_2025-11-19_12-00.txt
+ │   ├── omics_changes_2025-11-19_16-00.txt
++│   ├── omics_changes_2025-11-19_20-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -399,7 +400,9 @@
+ │   ├── omics_snapshot_2025-11-19_12-00.zip
+ │   ├── omics_snapshot_2025-11-19_16-00.txt
+ │   ├── omics_snapshot_2025-11-19_16-00.zip
+-│   └── omics_snapshot_2025-11-19_20-00.txt
++│   ├── omics_snapshot_2025-11-19_20-00.txt
++│   ├── omics_snapshot_2025-11-19_20-00.zip
++│   └── omics_snapshot_2025-11-20_00-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -476,7 +479,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-181 directories, 286 files
++181 directories, 289 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12

@@ -1,35 +1,43 @@
-// frontend/src/components/ProjectList.jsx
+// src/components/ProjectList.jsx
+// -----------------------------------------------------------------------------
+// Unified Project List Component
+// -----------------------------------------------------------------------------
+// Used by the Dashboard sidebar or panels.
+// Displays all projects and highlights the selected one.
+// -----------------------------------------------------------------------------
+
 import "../App.css";
 
-function ProjectList({
-  projects,
-  selectedProjectId,
-  onSelectProject,
-  onRefresh,
-}) {
+function ProjectList({ projects, selectedProjectId, onSelectProject, onRefresh }) {
   return (
     <div className="card">
       <div className="card-header-row">
         <h2>Projects</h2>
-        <button type="button" onClick={onRefresh} className="btn">
+        <button type="button" onClick={onRefresh} className="btn small">
           Refresh
         </button>
       </div>
-      <ul className="list">
+
+      <ul className="project-list">
         {projects.map((p) => (
           <li
             key={p.id}
             className={
-              selectedProjectId === p.id ? "list-item active" : "list-item"
+              selectedProjectId === p.id
+                ? "project-item active"
+                : "project-item"
             }
             onClick={() => onSelectProject(p)}
           >
-            <strong>{p.name}</strong>
-            {p.description && <span className="muted"> - {p.description}</span>}
+            <div className="project-name">{p.name}</div>
+            {p.description && (
+              <div className="project-desc">{p.description}</div>
+            )}
           </li>
         ))}
+
         {projects.length === 0 && (
-          <li className="muted">No projects yet.</li>
+          <li className="project-empty">No projects yet.</li>
         )}
       </ul>
     </div>

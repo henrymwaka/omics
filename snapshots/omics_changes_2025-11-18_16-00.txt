@@ -1,0 +1,376 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-18 16:00:02
+Current: omics_snapshot_2025-11-18_16-00.txt
+Previous: omics_snapshot_2025-11-18_12-00.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-18_12-00.txt	2025-11-18 12:00:02.756185774 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-18_16-00.txt	2025-11-18 16:00:02.165267422 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-18 12:00:01
++Generated on: 2025-11-18 16:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -303,6 +303,7 @@
+ │   ├── omics_changes_2025-11-18_00-00.txt
+ │   ├── omics_changes_2025-11-18_04-00.txt
+ │   ├── omics_changes_2025-11-18_08-00.txt
++│   ├── omics_changes_2025-11-18_12-00.txt
+ │   ├── omics_snapshot_2025-11-12_10-03.zip
+ │   ├── omics_snapshot_2025-11-12_12-00.zip
+ │   ├── omics_snapshot_2025-11-12_12-23.zip
+@@ -373,7 +374,9 @@
+ │   ├── omics_snapshot_2025-11-18_04-00.zip
+ │   ├── omics_snapshot_2025-11-18_08-00.txt
+ │   ├── omics_snapshot_2025-11-18_08-00.zip
+-│   └── omics_snapshot_2025-11-18_12-00.txt
++│   ├── omics_snapshot_2025-11-18_12-00.txt
++│   ├── omics_snapshot_2025-11-18_12-00.zip
++│   └── omics_snapshot_2025-11-18_16-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -450,7 +453,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-181 directories, 260 files
++181 directories, 263 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -1170,13 +1173,16 @@
+ # ===============================================================
+ 
+ import os
++from datetime import datetime, timezone
+ from django.http import HttpResponse, FileResponse, Http404
+-from rest_framework import viewsets, permissions
++from django.utils import timezone as dj_timezone
++
++from rest_framework import viewsets
+ from rest_framework.decorators import action
++from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
+ from rest_framework.response import Response
+-from rest_framework.exceptions import ValidationError
+ 
+-from .models import (
++from omics_core.models import (
+     Project,
+     Sample,
+     OmicsFile,
+@@ -1186,8 +1192,7 @@
+     Organism,
+     TissueType,
+ )
+-
+-from .serializers import (
++from omics_core.serializers import (
+     ProjectSerializer,
+     SampleSerializer,
+     OmicsFileSerializer,
+@@ -1197,173 +1202,171 @@
+     OrganismSerializer,
+     TissueTypeSerializer,
+ )
++from omics_core.tasks import run_fastqc
+ 
+-from .tasks.run_fastqc import run_fastqc
+ 
+-
+-# ===============================================================
++# ---------------------------------------------------------------
+ # Project API
+-# ===============================================================
++# ---------------------------------------------------------------
+ class ProjectViewSet(viewsets.ModelViewSet):
+-    """
+-    Projects created by authenticated users.
+-    Read access is allowed for everyone.
+-    Write access requires authentication.
+-    """
+-
+     queryset = Project.objects.all().order_by("-created_at")
+     serializer_class = ProjectSerializer
+-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
++    permission_classes = [AllowAny]
+ 
+ 
+-# ===============================================================
+-# Organism API
+-# Supports kingdom filtering and fast search.
+-# ===============================================================
++# ---------------------------------------------------------------
++# Organism API  (MISSING CLASS FIXED)
++# ---------------------------------------------------------------
+ class OrganismViewSet(viewsets.ModelViewSet):
++    queryset = Organism.objects.all().order_by("scientific_name")
+     serializer_class = OrganismSerializer
+-    permission_classes = [permissions.AllowAny]
+-
+-    def get_queryset(self):
+-        qs = Organism.objects.all()
+-
+-        kingdom = self.request.query_params.get("kingdom")
+-        search = self.request.query_params.get("search")
+-
+-        if kingdom:
+-            qs = qs.filter(kingdom__iexact=kingdom)
+ 
+-        if search:
+-            qs = qs.filter(search_name__icontains=search.lower().strip())
++    @action(detail=False, methods=["get"], url_path="search")
++    def search(self, request):
++        q = request.query_params.get("q", "").strip()
++        if not q:
++            return Response([])
++
++        qs = Organism.objects.filter(scientific_name__icontains=q).order_by("scientific_name")[:50]
++        return Response(OrganismSerializer(qs, many=True).data)
++
++    @action(detail=False, methods=["get"], url_path="by-kingdom")
++    def by_kingdom(self, request):
++        kingdom = request.query_params.get("kingdom")
++        if not kingdom:
++            return Response([])
+ 
+-        return qs.order_by("scientific_name")[:100]
++        qs = Organism.objects.filter(kingdom__iexact=kingdom).order_by("scientific_name")[:100]
++        return Response(OrganismSerializer(qs, many=True).data)
+ 
+ 
+-# ===============================================================
+-# Tissue Type API
+-# ===============================================================
++# ---------------------------------------------------------------
++# Tissue Type API  (MISSING CLASS FIXED)
++# ---------------------------------------------------------------
+ class TissueTypeViewSet(viewsets.ModelViewSet):
+-    serializer_class = TissueTypeSerializer
+-    permission_classes = [permissions.AllowAny]
+     queryset = TissueType.objects.all().order_by("name")
+-
+-    def get_queryset(self):
+-        qs = super().get_queryset()
+-        kingdom = self.request.query_params.get("kingdom")
+-        if kingdom:
+-            qs = qs.filter(kingdom__iexact=kingdom)
+-        return qs
++    serializer_class = TissueTypeSerializer
++    permission_classes = [AllowAny]
+ 
+ 
+-# ===============================================================
++# ---------------------------------------------------------------
+ # Sample API
+-# ===============================================================
++# ---------------------------------------------------------------
+ class SampleViewSet(viewsets.ModelViewSet):
+-    """
+-    Samples require login to create.
+-    Read is open for now.
+-    """
+-
++    queryset = Sample.objects.select_related("project", "organism", "tissue_type").all()
+     serializer_class = SampleSerializer
+-    queryset = Sample.objects.select_related(
+-        "project", "organism", "tissue_type"
+-    ).all()
+-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
++
+ 
+     @action(detail=True, methods=["get"], url_path="fastqc")
+     def latest_fastqc(self, request, pk=None):
+-        """
+-        Return latest FastQC result and a compact summary, if available.
+-        """
+         sample = self.get_object()
+ 
+-        html_res = OmicsResult.objects.filter(
+-            sample=sample,
+-            result_type="FASTQC_HTML",
+-        ).order_by("-id").first()
+-
+-        zip_res = OmicsResult.objects.filter(
+-            sample=sample,
+-            result_type="FASTQC_ZIP",
+-        ).order_by("-id").first()
+-
+-        if not html_res and not zip_res:
+-            return Response({"detail": "No FASTQC results found."}, status=404)
+-
+-        # Try to locate latest FASTQC job for this sample
+-        job = (
+-            OmicsJob.objects.filter(sample=sample, job_type="FASTQC")
+-            .order_by("-created_at", "-id")
+-            .first()
+-        )
++        html = OmicsResult.objects.filter(sample=sample, result_type="FASTQC_HTML").order_by("-id").first()
++        zipf = OmicsResult.objects.filter(sample=sample, result_type="FASTQC_ZIP").order_by("-id").first()
+ 
+-        summary = []
+-        job_status = None
+-        job_id = None
+-
+-        if job is not None:
+-            job_id = job.id
+-            job_status = job.status
+-            if isinstance(job.metadata, dict):
+-                summary = (
+-                    job.metadata.get("fastqc", {}).get("summary", [])
+-                    or []
+-                )
+-
+-        # Compute overall status from module summary
+-        overall = "UNKNOWN"
+-        if summary:
+-            statuses = {row.get("status") for row in summary}
+-            if "FAIL" in statuses:
+-                overall = "FAIL"
+-            elif "WARN" in statuses:
+-                overall = "WARN"
+-            elif "PASS" in statuses:
+-                overall = "PASS"
++        if not html and not zipf:
++            return Response({"detail": "No FASTQC results"}, status=404)
+ 
+-        generated = (
+-            html_res.created_at if html_res else zip_res.created_at
+-        )
++        return Response({
++            "sample_id": sample.id,
++            "sample_name": sample.sample_id,
++            "html_report": f"https://omics.reslab.dev/api/results/{html.id}/html/" if html else None,
++            "zip_download": f"https://omics.reslab.dev/api/results/{zipf.id}/download-zip/" if zipf else None,
++            "generated_on": html.created_at if html else zipf.created_at,
++        })
+ 
+-        return Response(
+-            {
+-                "sample_id": sample.id,
+-                "sample_name": sample.sample_id,
+-                "job_id": job_id,
+-                "job_status": job_status,
+-                "overall_status": overall,
+-                "summary": summary,
+-                "html_report": (
+-                    f"/api/results/{html_res.id}/html/" if html_res else None
+-                ),
+-                "zip_download": (
+-                    f"/api/results/{zip_res.id}/download-zip/"
+-                    if zip_res
+-                    else None
+-                ),
+-                "generated_on": generated,
+-            }
++
++    @action(detail=True, methods=["get"], url_path="jobs")
++    def job_history(self, request, pk=None):
++        sample = self.get_object()
++        jobs = OmicsJob.objects.filter(sample=sample).order_by("-started_at").values(
++            "id", "job_type", "status", "started_at", "finished_at", "output_path"
+         )
++        return Response({"sample": sample.sample_id, "jobs": list(jobs)})
+ 
+ 
+-# ===============================================================
+-# Omics File API
+-# ===============================================================
+-class OmicsFileViewSet(viewsets.ModelViewSet):
+-    """
+-    File uploads require authentication.
+-    File listing is open.
+-    """
++    @action(detail=True, methods=["get"], url_path="jobs/latest")
++    def latest_job(self, request, pk=None):
++        sample = self.get_object()
++        job = OmicsJob.objects.filter(sample=sample).order_by("-started_at").first()
++        if not job:
++            return Response({"detail": "No jobs found"}, status=404)
++
++        duration = None
++        if job.started_at and job.finished_at:
++            duration = (job.finished_at - job.started_at).total_seconds()
++
++        return Response({
++            "id": job.id,
++            "job_type": job.job_type,
++            "status": job.status,
++            "started_at": job.started_at,
++            "finished_at": job.finished_at,
++            "output_path": job.output_path,
++            "output_url": f"https://omics.reslab.dev/media/analysis/{os.path.basename(job.output_path)}" if job.output_path else None,
++            "log_preview": (job.log or "")[:500],
++            "duration_seconds": duration,
++        })
+ 
+-    serializer_class = OmicsFileSerializer
++
++# ---------------------------------------------------------------
++# File API
++# ---------------------------------------------------------------
++class OmicsFileViewSet(viewsets.ModelViewSet):
+     queryset = OmicsFile.objects.select_related("sample").all()
+-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
++    serializer_class = OmicsFileSerializer
+ 
+ 
+-# ===============================================================
++# ---------------------------------------------------------------
+ # Job API
+-# Handles job creation and Celery triggering.
+-# ===============================================================
++# ---------------------------------------------------------------
++class OmicsJobViewSet(viewsets.ModelViewSet):
++    queryset = OmicsJob.objects.select_related("sample").all()
++    serializer_class = OmicsJobSerializer
++
++
++    @action(detail=True, methods=["post"], url_path="trigger_fastqc")
++    def trigger_fastqc(self, request, pk=None):
++        job = self.get_object()
++        if job.status in ["running", "pending"]:
++            return Response({"error": "Already running"}, status=400)
++
++        job.status = "running"
++        job.started_at = dj_timezone.now()
++        job.save()
++        run_fastqc.delay(job.sample.id)
++
++        return Response({"message": f"FASTQC triggered for {job.sample.sample_id}"}, status=202)
++
++
++    @action(detail=True, methods=["get"], url_path="stream")
++    def stream_log(self, request, pk=None):
++        job = self.get_object()
++        text = job.log or ""
++        lines = text.splitlines()
++        limit = int(request.query_params.get("lines", 100))
++
++        if len(lines) > limit:
++            lines = lines[-limit:]
++
++        return HttpResponse("\n".join(lines), content_type="text/plain")
++
++
++# ---------------------------------------------------------------
++# Sample Draft API
++# ---------------------------------------------------------------
++class SampleDraftViewSet(viewsets.ModelViewSet):
++    queryset = SampleDraft.objects.select_related("project", "user").all()
++    serializer_class = SampleDraftSerializer
++
++
++# ---------------------------------------------------------------
++# Result API
++# ---------------------------------------------------------------
++class OmicsResultViewSet(viewsets.ModelViewSet):
++    queryset = OmicsResult.objects.select_related("sample").all()
++    serializer_class = OmicsResultSerializer
++
+ 
+ 
+ ### FILE: omics_core/urls.py

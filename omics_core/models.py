@@ -8,6 +8,7 @@ from django.conf import settings
 # ---------------------------------------------------------------
 class Organism(models.Model):
     """Standardized organism reference with taxonomy integration."""
+
     KINGDOM_CHOICES = [
         ("Plant", "Plant"),
         ("Animal", "Animal"),
@@ -15,12 +16,24 @@ class Organism(models.Model):
         ("Bacteria", "Bacteria"),
         ("Virus", "Virus"),
         ("Archaea", "Archaea"),
+        ("Eukaryota", "Eukaryota"),
     ]
+
     scientific_name = models.CharField(max_length=200, unique=True)
     common_name = models.CharField(max_length=100, blank=True)
     kingdom = models.CharField(max_length=50, choices=KINGDOM_CHOICES)
     taxonomy_id = models.PositiveIntegerField(
-        null=True, blank=True, help_text="NCBI taxonomy ID"
+        null=True,
+        blank=True,
+        help_text="NCBI taxonomy ID",
+    )
+
+    # Indexed lowercase field for very fast search
+    search_name = models.CharField(
+        max_length=200,
+        default="",
+        db_index=True,
+        help_text="Lowercased scientific_name for fast indexed search",
     )
 
     def __str__(self):
@@ -29,11 +42,15 @@ class Organism(models.Model):
 
 class TissueType(models.Model):
     """Controlled vocabulary for anatomical or culture source."""
+
     KINGDOM_CHOICES = Organism.KINGDOM_CHOICES
+
     name = models.CharField(max_length=100)
     kingdom = models.CharField(max_length=50, choices=KINGDOM_CHOICES)
     ontology_id = models.CharField(
-        max_length=50, blank=True, help_text="UBERON / PO term ID"
+        max_length=50,
+        blank=True,
+        help_text="UBERON or PO term ID",
     )
 
     class Meta:
@@ -52,12 +69,25 @@ class Project(models.Model):
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(default=timezone.now)
 
+    # Soft delete fields
+    is_active = models.BooleanField(default=True, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    def soft_delete(self):
+        """Mark project as inactive without physically deleting rows."""
+        if not self.is_active:
+            return
+        self.is_active = False
+        self.deleted_at = timezone.now()
+        self.save(update_fields=["is_active", "deleted_at"])
+
     def __str__(self):
         return self.name
 
 
 class Sample(models.Model):
     """Biological sample metadata linked to controlled vocabularies."""
+
     DATA_TYPES = [
         ("DNA", "DNA-seq"),
         ("RNA", "RNA-seq"),
@@ -65,19 +95,44 @@ class Sample(models.Model):
         ("PROT", "Proteomics"),
         ("METAB", "Metabolomics"),
     ]
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="samples")
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="samples",
+    )
     sample_id = models.CharField(max_length=100, unique=True)
+
     organism = models.ForeignKey(
-        Organism, on_delete=models.PROTECT, related_name="samples",
-        null=True, blank=True
+        Organism,
+        on_delete=models.PROTECT,
+        related_name="samples",
+        null=True,
+        blank=True,
     )
     tissue_type = models.ForeignKey(
-        TissueType, on_delete=models.PROTECT, related_name="samples",
-        null=True, blank=True
+        TissueType,
+        on_delete=models.PROTECT,
+        related_name="samples",
+        null=True,
+        blank=True,
     )
+
     data_type = models.CharField(max_length=10, choices=DATA_TYPES)
     collected_on = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
+
+    # Soft delete fields
+    is_active = models.BooleanField(default=True, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    def soft_delete(self):
+        """Mark sample as inactive without dropping linked files or jobs."""
+        if not self.is_active:
+            return
+        self.is_active = False
+        self.deleted_at = timezone.now()
+        self.save(update_fields=["is_active", "deleted_at"])
 
     def __str__(self):
         org = self.organism.scientific_name if self.organism else "Unspecified organism"
@@ -86,6 +141,7 @@ class Sample(models.Model):
 
 class OmicsFile(models.Model):
     """Uploaded omics data files linked to samples."""
+
     FILE_TYPES = [
         ("FASTQ", "FASTQ reads"),
         ("BAM", "Aligned reads"),
@@ -95,7 +151,12 @@ class OmicsFile(models.Model):
         ("META", "Metadata table"),
         ("OTHER", "Other"),
     ]
-    sample = models.ForeignKey(Sample, on_delete=models.CASCADE, related_name="files")
+
+    sample = models.ForeignKey(
+        Sample,
+        on_delete=models.CASCADE,
+        related_name="files",
+    )
     file_type = models.CharField(max_length=10, choices=FILE_TYPES)
     file = models.FileField(upload_to="uploads/%Y/%m/%d/")
     uploaded_at = models.DateTimeField(default=timezone.now)
@@ -107,10 +168,11 @@ class OmicsFile(models.Model):
 
 
 # ---------------------------------------------------------------
-# Job and Result Tracking (Bioinformatics Layer)
+# Job and Result Tracking
 # ---------------------------------------------------------------
 class OmicsJob(models.Model):
-    """Tracks processing jobs (e.g. FastQC, alignment, variant calling)."""
+    """Tracks processing jobs such as FastQC, alignment, variant calling."""
+
     JOB_TYPES = [
         ("FASTQC", "Quality Control"),
         ("ALIGN", "Read Alignment"),
@@ -119,6 +181,7 @@ class OmicsJob(models.Model):
         ("ANNOT", "Annotation"),
         ("CUSTOM", "Custom Script"),
     ]
+
     STATUS_CHOICES = [
         ("pending", "Pending"),
         ("running", "Running"),
@@ -126,13 +189,17 @@ class OmicsJob(models.Model):
         ("failed", "Failed"),
     ]
 
-    sample = models.ForeignKey(Sample, on_delete=models.CASCADE, related_name="jobs")
+    sample = models.ForeignKey(
+        Sample,
+        on_delete=models.CASCADE,
+        related_name="jobs",
+    )
     job_type = models.CharField(max_length=50, choices=JOB_TYPES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
     log = models.TextField(blank=True)
-    metadata = models.JSONField(blank=True, null=True, default=dict)  # <--- Added field
+    metadata = models.JSONField(blank=True, null=True, default=dict)
     output_path = models.CharField(max_length=255, blank=True)
 
     class Meta:
@@ -144,7 +211,12 @@ class OmicsJob(models.Model):
 
 class OmicsResult(models.Model):
     """Stores processed output files or JSON summaries."""
-    sample = models.ForeignKey(Sample, on_delete=models.CASCADE, related_name="results")
+
+    sample = models.ForeignKey(
+        Sample,
+        on_delete=models.CASCADE,
+        related_name="results",
+    )
     result_type = models.CharField(max_length=50)
     file = models.FileField(upload_to="results/")
     summary_json = models.JSONField(default=dict, blank=True)
@@ -158,15 +230,15 @@ class OmicsResult(models.Model):
 
 
 # ---------------------------------------------------------------
-# Sample Drafts (Backend-aware wizard progress)
+# Sample Drafts
 # ---------------------------------------------------------------
 class SampleDraft(models.Model):
     """Stores partial sample entry progress for resuming later."""
+
     project = models.ForeignKey(
         Project,
         on_delete=models.CASCADE,
         related_name="sample_drafts",
-        help_text="Associated project for this draft entry"
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -174,10 +246,10 @@ class SampleDraft(models.Model):
         null=True,
         blank=True,
         related_name="sample_drafts",
-        help_text="User who created this draft"
     )
-    step = models.PositiveSmallIntegerField(default=1, help_text="Current wizard step")
-    data = models.JSONField(default=dict, blank=True, help_text="Serialized wizard data")
+
+    step = models.PositiveSmallIntegerField(default=1)
+    data = models.JSONField(default=dict, blank=True)
 
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)

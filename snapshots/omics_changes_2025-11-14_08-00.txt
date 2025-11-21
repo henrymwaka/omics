@@ -1,0 +1,287 @@
+===== CHANGE REPORT =====
+Generated: 2025-11-14 08:00:03
+Current: omics_snapshot_2025-11-14_08-00.txt
+Previous: omics_snapshot_2025-11-14_05-49.txt
+
+## Snapshot Differences
+--- /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-14_05-49.txt	2025-11-14 05:49:44.648455047 +0000
++++ /home/shaykins/Projects/omics/snapshots/omics_snapshot_2025-11-14_08-00.txt	2025-11-14 08:00:02.782203564 +0000
+@@ -1,6 +1,6 @@
+ ----------------------------------------------
+ ===== OMICS PLATFORM FULL SNAPSHOT =====
+-Generated on: 2025-11-14 05:49:44
++Generated on: 2025-11-14 08:00:01
+ Host: mail.reslab.dev
+ User: shaykins
+ Project root: /home/shaykins/Projects/omics
+@@ -285,7 +285,8 @@
+ │   ├── omics_snapshot_2025-11-14_00-00.zip
+ │   ├── omics_snapshot_2025-11-14_04-00.txt
+ │   ├── omics_snapshot_2025-11-14_04-00.zip
+-│   └── omics_snapshot_2025-11-14_05-49.txt
++│   ├── omics_snapshot_2025-11-14_05-49.txt
++│   └── omics_snapshot_2025-11-14_08-00.txt
+ ├── static
+ │   ├── admin
+ │   │   ├── css
+@@ -364,7 +365,7 @@
+     ├── lib64 -> lib
+     └── pyvenv.cfg
+ 
+-179 directories, 176 files
++179 directories, 177 files
+ 
+ ## ENVIRONMENT INFO
+ Python: Python 3.10.12
+@@ -1078,11 +1079,15 @@
+ 
+ import os
+ from datetime import datetime, timezone
++
+ from django.utils import timezone as dj_timezone
+ from django.http import HttpResponse, FileResponse, Http404
++
+ from rest_framework import viewsets
+ from rest_framework.decorators import action
+ from rest_framework.response import Response
++
++from omics_core.tasks import run_fastqc
+ from omics_core.models import (
+     Project,
+     Sample,
+@@ -1090,6 +1095,8 @@
+     OmicsJob,
+     OmicsResult,
+     SampleDraft,
++    Organism,
++    TissueType,
+ )
+ from omics_core.serializers import (
+     ProjectSerializer,
+@@ -1098,28 +1105,28 @@
+     OmicsJobSerializer,
+     OmicsResultSerializer,
+     SampleDraftSerializer,
++    OrganismSerializer,
++    TissueTypeSerializer,
+ )
+-from omics_core.tasks import run_fastqc
+ 
+ 
+-# ---------------------------------------------------------------
++# ===============================================================
+ # Project API
+-# ---------------------------------------------------------------
++# ===============================================================
+ class ProjectViewSet(viewsets.ModelViewSet):
+     queryset = Project.objects.all().order_by("-created_at")
+     serializer_class = ProjectSerializer
+ 
+ 
+-# ---------------------------------------------------------------
++# ===============================================================
+ # Sample API
+-# ---------------------------------------------------------------
++# ===============================================================
+ class SampleViewSet(viewsets.ModelViewSet):
+     queryset = Sample.objects.select_related("project", "organism", "tissue_type").all()
+     serializer_class = SampleSerializer
+ 
+     @action(detail=True, methods=["get"], url_path="fastqc")
+     def latest_fastqc(self, request, pk=None):
+-        """Return links to the latest FASTQC results for this sample."""
+         sample = self.get_object()
+ 
+         latest_html = (
+@@ -1134,10 +1141,7 @@
+         )
+ 
+         if not latest_html and not latest_zip:
+-            return Response(
+-                {"detail": "No FASTQC results found for this sample."},
+-                status=404,
+-            )
++            return Response({"detail": "No FASTQC results found."}, status=404)
+ 
+         return Response(
+             {
+@@ -1145,13 +1149,11 @@
+                 "sample_name": sample.sample_id,
+                 "html_report": (
+                     f"https://omics.reslab.dev/api/results/{latest_html.id}/html/"
+-                    if latest_html
+-                    else None
++                    if latest_html else None
+                 ),
+                 "zip_download": (
+                     f"https://omics.reslab.dev/api/results/{latest_zip.id}/download-zip/"
+-                    if latest_zip
+-                    else None
++                    if latest_zip else None
+                 ),
+                 "generated_on": (
+                     latest_html.created_at if latest_html else latest_zip.created_at
+@@ -1161,7 +1163,6 @@
+ 
+     @action(detail=True, methods=["get"], url_path="jobs")
+     def job_history(self, request, pk=None):
+-        """Return full job history for a sample."""
+         sample = self.get_object()
+         jobs = (
+             OmicsJob.objects.filter(sample=sample)
+@@ -1172,7 +1173,6 @@
+ 
+     @action(detail=True, methods=["get"], url_path="jobs/latest")
+     def latest_job(self, request, pk=None):
+-        """Return only the latest job for this sample."""
+         sample = self.get_object()
+         job = OmicsJob.objects.filter(sample=sample).order_by("-started_at").first()
+         if not job:
+@@ -1190,9 +1190,10 @@
+                 "started_at": job.started_at,
+                 "finished_at": job.finished_at,
+                 "output_path": job.output_path,
+-                "output_url": f"https://omics.reslab.dev/media/analysis/{os.path.basename(job.output_path)}"
+-                if job.output_path
+-                else None,
++                "output_url": (
++                    f"https://omics.reslab.dev/media/analysis/{os.path.basename(job.output_path)}"
++                    if job.output_path else None
++                ),
+                 "log_preview": (job.log or "")[:500],
+                 "result_html_url": "https://omics.reslab.dev/api/results/1/html/",
+                 "result_zip_url": "https://omics.reslab.dev/api/results/2/download-zip/",
+@@ -1204,24 +1205,23 @@
+         )
+ 
+ 
+-# ---------------------------------------------------------------
++# ===============================================================
+ # File API
+-# ---------------------------------------------------------------
++# ===============================================================
+ class OmicsFileViewSet(viewsets.ModelViewSet):
+     queryset = OmicsFile.objects.select_related("sample").all()
+     serializer_class = OmicsFileSerializer
+ 
+ 
+-# ---------------------------------------------------------------
++# ===============================================================
+ # Job API
+-# ---------------------------------------------------------------
++# ===============================================================
+ class OmicsJobViewSet(viewsets.ModelViewSet):
+     queryset = OmicsJob.objects.select_related("sample").all()
+     serializer_class = OmicsJobSerializer
+ 
+     @action(detail=True, methods=["post"], url_path="trigger_fastqc")
+     def trigger_fastqc(self, request, pk=None):
+-        """Trigger a new FASTQC job for this job's sample."""
+         job = self.get_object()
+         if job.status in ["running", "pending"]:
+             return Response({"error": "Job already running or pending"}, status=400)
+@@ -1229,7 +1229,9 @@
+         job.status = "running"
+         job.started_at = dj_timezone.now()
+         job.save()
++
+         run_fastqc.delay(job.sample.id)
++
+         return Response(
+             {"message": f"FASTQC job triggered for {job.sample.sample_id}"},
+             status=202,
+@@ -1237,27 +1239,16 @@
+ 
+     @action(detail=True, methods=["post"], url_path="rerun")
+     def rerun_fastqc(self, request, pk=None):
+-        """Re-run FASTQC for the same sample linked to this job."""
+         job = self.get_object()
+         run_fastqc.delay(job.sample.id)
+-        return Response(
+-            {"message": f"FASTQC job re-triggered for {job.sample.sample_id}"},
+-            status=202,
+-        )
++        return Response({"message": "FASTQC job re-triggered"}, status=202)
+ 
+     @action(detail=True, methods=["get"], url_path="stream")
+     def stream_log(self, request, pk=None):
+-        """
+-        Stream the most recent section of this job's log.
+-        Optional query parameters:
+-          ?lines=N        → limit output to last N lines (default 100)
+-          ?since=<ISO8601> → include only log lines newer than timestamp
+-        """
+         job = self.get_object()
+         log_text = job.log or ""
+         lines = log_text.splitlines()
+ 
+-        # ?lines=N
+         try:
+             limit = int(request.query_params.get("lines", 100))
+             if limit <= 0:
+@@ -1265,12 +1256,22 @@
+         except ValueError:
+             limit = 100
+ 
+-        # ?since=timestamp
+         since_param = request.query_params.get("since")
+         if since_param:
+             try:
+                 since_dt = datetime.fromisoformat(since_param.replace("Z", "+00:00"))
+-                lines = [
++                lines = [ln for ln in lines if datetime.now(timezone.utc) > since_dt]
++            except Exception:
++                pass
++
++        log_tail = "\n".join(lines[-limit:]) if lines else ""
++
++        return Response(
++            {
++                "id": job.id,
++                "status": job.status,
++                "job_type": job.job_type,
++                "updated": (
+ 
+ 
+ ### FILE: omics_core/tasks.py
+@@ -1447,6 +1448,7 @@
+ from drf_yasg.views import get_schema_view
+ from drf_yasg import openapi
+ from rest_framework.permissions import AllowAny
++
+ from . import views
+ from .models import OmicsJob
+ 
+@@ -1460,6 +1462,8 @@
+ router.register(r"sample-drafts", views.SampleDraftViewSet, basename="sample-draft")
+ router.register(r"jobs", views.OmicsJobViewSet, basename="omics-job")
+ router.register(r"results", views.OmicsResultViewSet, basename="omics-result")
++router.register(r"organisms", views.OrganismViewSet, basename="organism")
++router.register(r"tissues", views.TissueTypeViewSet, basename="tissue")
+ 
+ # ===============================================================
+ # OPENAPI / SWAGGER CONFIGURATION
+@@ -1482,20 +1486,14 @@
+ # URL PATTERNS
+ # ===============================================================
+ urlpatterns = [
+-    # ---------------------------------------------------------------
+-    # MAIN API ROUTES (CRUD + Custom Actions)
+-    # ---------------------------------------------------------------
++    # Main API routes
+     path("", include(router.urls)),
+ 
+-    # ---------------------------------------------------------------
+-    # API DOCUMENTATION (Swagger and ReDoc)
+-    # ---------------------------------------------------------------
++    # API documentation
+     path("docs/", schema_view.with_ui("swagger", cache_timeout=0), name="swagger-docs"),
+     path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="redoc-docs"),
+ 
+-    # ---------------------------------------------------------------
+-    # JOB DETAIL VIEW (HTML log stream)
+-    # ---------------------------------------------------------------
++    # Job detail HTML view
+     path(
+         "jobs/<int:job_id>/",
+         lambda request, job_id: render(
